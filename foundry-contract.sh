@@ -14,9 +14,6 @@ print_command() {
   echo -e "${BOLD}${YELLOW}$1${RESET}"
 }
 
-# --- Nhập RPC URL ---
-read -p "🔗 Enter your RPC URL (e.g. https://rpc.dev.gblend.xyz): " RPC_URL
-
 # --- Install Foundry ---
 print_command "Installing Foundry..."
 curl -L https://foundry.paradigm.xyz | bash
@@ -29,10 +26,12 @@ foundryup
 print_command "Initializing Foundry project..."
 forge init --force --no-commit
 
-# --- Create Token Contract ---
+# --- Create Network & Token Contract ---
+read -p "🔗 Enter your RPC URL (e.g. https://rpc.dev.gblend.xyz): " RPC_URL
 read -p "Enter token name: " TOKEN_NAME
 read -p "Enter token symbol (e.g. ABC): " TOKEN_SYMBOL
-read -p "Enter total supply (e.g. 1000000): " TOTAL_SUPPLY
+read -p "Enter total supply (Enter to choose: 1,000,000,000): " TOTAL_SUPPLY
+TOTAL_SUPPLY=${TOTAL_SUPPLY:-1000000000}
 
 rm src/Counter.sol
 
@@ -97,7 +96,7 @@ echo "✅ Deployed to: $ADDRESS"
 sleep 2
 
 # --- Verify Contract ---
-ADDRESS=$(cat contract-address.txt)
+read -p "Enter the verifier URL (e.g. https://blockscout.dev.gblend.xyz/api/): " VERIFY_URL
 
 print_command "Verifying contract..."
 forge verify-contract \
@@ -105,10 +104,9 @@ forge verify-contract \
   "$ADDRESS" \
   src/MyToken.sol:MyToken \
   --verifier blockscout \
-  --verifier-url https://blockscout.dev.gblend.xyz/api/
+  --verifier-url "$VERIFY_URL"
 
 echo "✅ Verified!"
-echo "🔗 https://blockscout.dev.gblend.xyz/address/$ADDRESS"
 
 # --- Transfer Token ---
 TO_ADDRESS="0x$(tr -dc 'a-f0-9' < /dev/urandom | head -c 40)"
@@ -139,7 +137,7 @@ for i in $(seq 1 $NUM_TRANSFERS); do
         --private-key "$PRIVATE_KEY" \
         --rpc-url "$RPC_URL"
 
-    SLEEP_TIME=$(( (RANDOM % 11) + 10 ))
+    SLEEP_TIME=$(( (RANDOM % 11) + 20 ))
     echo "⏳ Sleeping $SLEEP_TIME sec..."
     sleep $SLEEP_TIME
 done
