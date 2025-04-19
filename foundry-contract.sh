@@ -27,7 +27,7 @@ foundryup
 
 # --- Start Foundry Project ---
 print_command "Initializing Foundry project..."
-forge init --force
+forge init --force --no-commit
 
 # --- Create Token Contract ---
 read -p "Enter token name: " TOKEN_NAME
