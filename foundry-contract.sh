@@ -124,40 +124,6 @@ ADDRESS=$(forge create src/MyToken.sol:MyToken \
 echo "$ADDRESS" > contract-address.txt
 echo "✅ Deployed to: $ADDRESS"
 
-# --- Choose Network for Verification ---
-echo "Choose network to verify:"
-echo "0) Skip verification"
-echo "1) Monad testnet"
-echo "2) Somnia testnet"
-echo "3) ...."
-read -p "Enter number: " choice
-
-case $choice in
-  0)
-    echo "Skipping verification..."
-    exit 0
-    ;;
-  1)
-    CHAIN=10143
-    VERIFIER=sourcify
-    VERIFIER_URL="https://sourcify-api-monad.blockvision.org"
-    ;;
-  2)
-    CHAIN=50312
-    VERIFIER=blockscout
-    VERIFIER_URL="https://shannon-explorer.somnia.network/api"
-    ;;
-  3)
-    CHAIN=11155111
-    VERIFIER=etherscan
-    VERIFIER_URL="https://api-sepolia.etherscan.io/api"
-    ;;
-  *)
-    echo "❌ Invalid option!"
-    exit 1
-    ;;
-esac
-
 # --- Verify Contract ---
 CONTRACT_NAME="src/MyToken.sol:MyToken"
 if [ "$SKIP_VERIFY" != true ]; then
