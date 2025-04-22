@@ -171,7 +171,7 @@ read -p "How many transfers do you want to make? " NUM_TRANSFERS
 DECIMALS=18
 
 for i in $(seq 1 $NUM_TRANSFERS); do
-    TO_ADDRESS="0x$(tr -dc 'a-f0-9' < /dev/urandom | head -c 40)"
+    TO_ADDRESS="0x$(openssl rand -hex 20)"
     AMOUNT_DISPLAY=$(( (RANDOM % 99001) + 1000 ))
     echo "🔢 Transfer #$i: Amount (display): $AMOUNT_DISPLAY"
 
