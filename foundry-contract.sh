@@ -27,7 +27,32 @@ print_command "Initializing Foundry project..."
 forge init --force --no-commit
 
 # --- Create Network & Token Contract ---
-read -p "🔗 Enter your RPC URL (e.g. https://rpc.dev.gblend.xyz): " RPC_URL
+echo "Select RPC URL:"
+echo "1) Monad testnet"
+echo "2) Somnia testnet"
+echo "3) ....."
+echo "4) Custom RPC"
+read -p "Enter number for RPC: " rpc_choice
+
+case $rpc_choice in
+  1)
+    RPC_URL="https://rpc.monad.xyz"
+    ;;
+  2)
+    RPC_URL="https://dream-rpc.somnia.network"
+    ;;
+  3)
+    RPC_URL="......"
+    ;;
+  4)
+    read -p "Enter your custom RPC URL: " RPC_URL
+    ;;
+  *)
+    echo "❌ Invalid option!"
+    exit 1
+    ;;
+esac
+
 read -p "Enter token name: " TOKEN_NAME
 read -p "Enter token symbol (e.g. ABC): " TOKEN_SYMBOL
 read -p "Enter total supply (Enter to choose: 1,000,000,000): " TOTAL_SUPPLY
@@ -93,24 +118,28 @@ ADDRESS=$(forge create src/MyToken.sol:MyToken \
 echo "$ADDRESS" > contract-address.txt
 echo "✅ Deployed to: $ADDRESS"
 
-sleep 2
-
-echo "Choose network verify:"
-echo "1) Monad testnet (sourcify)"
-echo "2) Goerli (etherscan)"
-echo "3) Sepolia (etherscan)"
+# --- Choose Network for Verification ---
+echo "Choose network to verify:"
+echo "0) Skip verification"
+echo "1) Monad testnet"
+echo "2) Somnia testnet"
+echo "3) ...."
 read -p "Enter: " choice
 
 case $choice in
+  0)
+    echo "Skipping verification..."
+    exit 0
+    ;;
   1)
     CHAIN=10143
     VERIFIER=sourcify
     VERIFIER_URL="https://sourcify-api-monad.blockvision.org"
     ;;
   2)
-    CHAIN=5
-    VERIFIER=etherscan
-    VERIFIER_URL="https://api-goerli.etherscan.io/api"
+    CHAIN=50312
+    VERIFIER=blockscout
+    VERIFIER_URL="https://shannon-explorer.somnia.network/api"
     ;;
   3)
     CHAIN=11155111
@@ -118,27 +147,22 @@ case $choice in
     VERIFIER_URL="https://api-sepolia.etherscan.io/api"
     ;;
   *)
-    echo "❌ Lựa chọn không hợp lệ!"
+    echo "❌ Invalid option!"
     exit 1
     ;;
 esac
 
-# These are assumed to be set earlier in the script
-# For example:
-# RPC_URL="https://..."
-# ADDRESS="0x..."
-# CONTRACT_NAME="src/MyToken.sol:MyToken"
-
+# --- Verify Contract ---
+CONTRACT_NAME="src/MyToken.sol:MyToken"
 echo "🔍 Verifying contract..."
 forge verify-contract \
   --rpc-url "$RPC_URL" \
   "$ADDRESS" \
-  src/MyToken.sol:MyToken \
+  "$CONTRACT_NAME" \
   --verifier "$VERIFIER" \
   --verifier-url "$VERIFIER_URL"
 
 echo "✅ Contract verified!"
-
 
 # --- Transfer Token ---
 TO_ADDRESS="0x$(tr -dc 'a-f0-9' < /dev/urandom | head -c 40)"
