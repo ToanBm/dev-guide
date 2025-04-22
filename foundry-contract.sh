@@ -36,7 +36,7 @@ read -p "Enter number: " rpc_choice
 
 case $rpc_choice in
   1)
-    RPC_URL="https://rpc.monad.xyz"
+    RPC_URL="https://testnet-rpc.monad.xyz"
     ;;
   2)
     RPC_URL="https://dream-rpc.somnia.network"
