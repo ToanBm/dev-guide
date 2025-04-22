@@ -140,6 +140,7 @@ if [ "$SKIP_VERIFY" != true ]; then
     --verifier-url "$VERIFIER_URL"
     
 echo "✅ Verified on $VERIFIER!"
+fi
 
 sleep 3
 # --- Multi Transfer ---
