@@ -133,7 +133,7 @@ echo "🔍 Verifying contract..."
 forge verify-contract \
   --rpc-url "$RPC_URL" \
   "$ADDRESS" \
-  "$CONTRACT_NAME" \
+  src/MyToken.sol:MyToken \
   --verifier "$VERIFIER" \
   --verifier-url "$VERIFIER_URL"
 
