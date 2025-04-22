@@ -40,18 +40,22 @@ case $rpc_choice in
     CHAIN=10143
     VERIFIER=sourcify
     VERIFIER_URL="https://sourcify-api-monad.blockvision.org"
+    SKIP_VERIFY=false
     ;;
   2)
     RPC_URL="https://dream-rpc.somnia.network"
     CHAIN=50312
     VERIFIER=blockscout
     VERIFIER_URL="https://shannon-explorer.somnia.network/api"
+    SKIP_VERIFY=false
     ;;
   3)
     RPC_URL="......"
+    SKIP_VERIFY=false
     ;;
   4)
     read -p "Enter your custom RPC URL: " RPC_URL
+    SKIP_VERIFY=true
     ;;
   *)
     echo "❌ Invalid option!"
