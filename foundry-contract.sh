@@ -160,12 +160,12 @@ forge verify-contract \
   "$ADDRESS" \
   "$CONTRACT_NAME" \
   --verifier "$VERIFIER" \
-  --verifier-url "$VERIFIER_URL"
+  --verifier-url "$VERIFIER_URL" \
+  2>/dev/null
 
-echo "✅ Contract verified!"
+echo "✅ Verified on $VERIFIER!"
 
 sleep 3
-
 # --- Multi Transfer ---
 read -p "How many transfers do you want to make? " NUM_TRANSFERS
 DECIMALS=18
