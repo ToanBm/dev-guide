@@ -37,9 +37,15 @@ read -p "Enter number: " rpc_choice
 case $rpc_choice in
   1)
     RPC_URL="https://testnet-rpc.monad.xyz"
+    CHAIN=10143
+    VERIFIER=sourcify
+    VERIFIER_URL="https://sourcify-api-monad.blockvision.org"
     ;;
   2)
     RPC_URL="https://dream-rpc.somnia.network"
+    CHAIN=50312
+    VERIFIER=blockscout
+    VERIFIER_URL="https://shannon-explorer.somnia.network/api"
     ;;
   3)
     RPC_URL="......"
@@ -154,15 +160,15 @@ esac
 
 # --- Verify Contract ---
 CONTRACT_NAME="src/MyToken.sol:MyToken"
-echo "🔍 Verifying contract..."
-forge verify-contract \
-  --rpc-url "$RPC_URL" \
-  "$ADDRESS" \
-  "$CONTRACT_NAME" \
-  --verifier "$VERIFIER" \
-  --verifier-url "$VERIFIER_URL" \
-  2>/dev/null
-
+if [ "$SKIP_VERIFY" != true ]; then
+  echo "🔍 Verifying contract..."
+  forge verify-contract \
+    --rpc-url "$RPC_URL" \
+    "$ADDRESS" \
+    "$CONTRACT_NAME" \
+    --verifier "$VERIFIER" \
+    --verifier-url "$VERIFIER_URL"
+    
 echo "✅ Verified on $VERIFIER!"
 
 sleep 3
