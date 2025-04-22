@@ -95,18 +95,50 @@ echo "✅ Deployed to: $ADDRESS"
 
 sleep 2
 
-# --- Verify Contract ---
-read -p "Enter the verifier URL (e.g. https://blockscout.dev.gblend.xyz/api/): " VERIFY_URL
+echo "Choose network verify:"
+echo "1) Monad testnet (sourcify)"
+echo "2) Goerli (etherscan)"
+echo "3) Sepolia (etherscan)"
+read -p "Enter: " choice
 
-print_command "Verifying contract..."
+case $choice in
+  1)
+    CHAIN=10143
+    VERIFIER=sourcify
+    VERIFIER_URL="https://sourcify-api-monad.blockvision.org"
+    ;;
+  2)
+    CHAIN=5
+    VERIFIER=etherscan
+    VERIFIER_URL="https://api-goerli.etherscan.io/api"
+    ;;
+  3)
+    CHAIN=11155111
+    VERIFIER=etherscan
+    VERIFIER_URL="https://api-sepolia.etherscan.io/api"
+    ;;
+  *)
+    echo "❌ Lựa chọn không hợp lệ!"
+    exit 1
+    ;;
+esac
+
+# These are assumed to be set earlier in the script
+# For example:
+# RPC_URL="https://..."
+# ADDRESS="0x..."
+# CONTRACT_NAME="src/MyToken.sol:MyToken"
+
+echo "🔍 Verifying contract..."
 forge verify-contract \
   --rpc-url "$RPC_URL" \
   "$ADDRESS" \
-  src/MyToken.sol:MyToken \
-  --verifier blockscout \
-  --verifier-url "$VERIFY_URL"
+  "$CONTRACT_NAME" \
+  --verifier "$VERIFIER" \
+  --verifier-url "$VERIFIER_URL"
 
-echo "✅ Verified!"
+echo "✅ Contract verified!"
+
 
 # --- Transfer Token ---
 TO_ADDRESS="0x$(tr -dc 'a-f0-9' < /dev/urandom | head -c 40)"
