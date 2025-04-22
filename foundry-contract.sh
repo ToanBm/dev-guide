@@ -28,9 +28,9 @@ forge init --force --no-commit
 
 # --- Create Network & Token Contract ---
 echo "Select Network:"
-echo "1) Monad testnet"
-echo "2) Somnia testnet"
-echo "3) Add new"
+echo "1) Monad Testnet"
+echo "2) Somnia Testnet"
+echo "3) Fluent Devnet"
 echo "4) Custom RPC"
 read -p "Enter number: " rpc_choice
 
@@ -50,7 +50,10 @@ case $rpc_choice in
     SKIP_VERIFY=false
     ;;
   3)
-    RPC_URL="add-new"
+    RPC_URL="https://rpc.dev.gblend.xyz/"
+    CHAIN=20993
+    VERIFIER=blockscout
+    VERIFIER_URL="https://blockscout.dev.gblend.xyz/api/"
     SKIP_VERIFY=false
     ;;
   4)
