@@ -27,12 +27,12 @@ print_command "Initializing Foundry project..."
 forge init --force --no-commit
 
 # --- Create Network & Token Contract ---
-echo "Select RPC URL:"
+echo "Select Network:"
 echo "1) Monad testnet"
 echo "2) Somnia testnet"
 echo "3) ....."
 echo "4) Custom RPC"
-read -p "Enter number for RPC: " rpc_choice
+read -p "Enter number: " rpc_choice
 
 case $rpc_choice in
   1)
@@ -124,7 +124,7 @@ echo "0) Skip verification"
 echo "1) Monad testnet"
 echo "2) Somnia testnet"
 echo "3) ...."
-read -p "Enter: " choice
+read -p "Enter number: " choice
 
 case $choice in
   0)
@@ -164,18 +164,7 @@ forge verify-contract \
 
 echo "✅ Contract verified!"
 
-# --- Transfer Token ---
-TO_ADDRESS="0x$(tr -dc 'a-f0-9' < /dev/urandom | head -c 40)"
-AMOUNT_DISPLAY=$(( (RANDOM % 99001) + 1000 ))
-echo "🔢 Amount (display): $AMOUNT_DISPLAY"
-
-AMOUNT_RAW=$(echo "$AMOUNT_DISPLAY * 10^18" | bc)
-echo "🔢 Raw amount to send: $AMOUNT_RAW"
-
-cast send $ADDRESS \
-  "transfer(address,uint256)" $TO_ADDRESS $AMOUNT_RAW \
-  --private-key "$PRIVATE_KEY" \
-  --rpc-url "$RPC_URL"
+sleep 3
 
 # --- Multi Transfer ---
 read -p "How many transfers do you want to make? " NUM_TRANSFERS
