@@ -30,7 +30,7 @@ forge init --force --no-commit
 echo "Select Network:"
 echo "1) Monad testnet"
 echo "2) Somnia testnet"
-echo "3) ....."
+echo "3) Add new"
 echo "4) Custom RPC"
 read -p "Enter number: " rpc_choice
 
@@ -50,7 +50,7 @@ case $rpc_choice in
     SKIP_VERIFY=false
     ;;
   3)
-    RPC_URL="......"
+    RPC_URL="add-new"
     SKIP_VERIFY=false
     ;;
   4)
@@ -138,8 +138,8 @@ if [ "$SKIP_VERIFY" != true ]; then
     "$CONTRACT_NAME" \
     --verifier "$VERIFIER" \
     --verifier-url "$VERIFIER_URL"
-    
-echo "✅ Verified on $VERIFIER!"
+
+  echo "✅ Verified on $VERIFIER!"
 fi
 
 sleep 3
