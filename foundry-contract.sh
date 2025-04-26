@@ -31,7 +31,7 @@ echo "Select Network:"
 echo "1) Monad Testnet"
 echo "2) Somnia Testnet"
 echo "3) Fluent Devnet"
-echo "4) Custom RPC"
+echo "4) 0G Galileo Testnet"
 read -p "Enter number: " rpc_choice
 
 case $rpc_choice in
@@ -57,7 +57,10 @@ case $rpc_choice in
     SKIP_VERIFY=false
     ;;
   4)
-    read -p "Enter your custom RPC URL: " RPC_URL
+    RPC_URL="https://evmrpc-testnet.0g.ai"
+    CHAIN=80087
+    VERIFIER=no
+    VERIFIER_URL="no"
     SKIP_VERIFY=true
     ;;
   *)
