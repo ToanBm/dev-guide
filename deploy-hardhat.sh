@@ -14,7 +14,7 @@ print_command "Setting up Hardhat project..."
 print_command "Installing dependencies..."
 npm install -g npm@latest > /dev/null
 npm init -y > /dev/null
-npm install --save-dev hardhat @nomicfoundation/hardhat-toolbox dotenv > /dev/null
+npm install --save-dev hardhat @nomicfoundation/hardhat-toolbox-viem dotenv > /dev/null
 
 npx hardhat init --force
 
@@ -119,47 +119,38 @@ EOF
 
 print_command "Updating hardhat.config.js..."
 cat <<EOF > hardhat.config.js
-require("@nomicfoundation/hardhat-toolbox");
+require("@nomicfoundation/hardhat-toolbox-viem");
 require("dotenv").config();
 
 module.exports = {
-  solidity: "0.8.20",
+  solidity: {
+    version: "0.8.20",
+    settings: {
+      metadata: {
+        bytecodeHash: "none",
+        useLiteralContent: true,
+      },
+    },
+  },
   networks: {
     custom: {
       url: process.env.RPC_URL,
       chainId: parseInt(process.env.CHAIN),
-      accounts: ["0x" + process.env.PRIVATE_KEY]
-    }
+      accounts: ["0x" + process.env.PRIVATE_KEY],
+    },
+    monadTestnet: {
+      url: "https://testnet-rpc.monad.xyz",
+      chainId: 10143,
+    },
+  },
+  sourcify: {
+    enabled: true,
+    apiUrl: "https://sourcify-api-monad.blockvision.org",
+    browserUrl: "https://testnet.monadexplorer.com",
   },
   etherscan: {
-    apiKey: "DUMMY_API_KEY", // placeholder
-    customChains: [
-      {
-        network: "monad",
-        chainId: 10143,
-        urls: {
-          apiURL: "https://sourcify-api-monad.blockvision.org",
-          browserURL: "https://explorer.monad.xyz"
-        }
-      },
-      {
-        network: "somnia",
-        chainId: 50312,
-        urls: {
-          apiURL: "https://shannon-explorer.somnia.network/api",
-          browserURL: "https://shannon-explorer.somnia.network"
-        }
-      },
-      {
-        network: "fluent",
-        chainId: 20993,
-        urls: {
-          apiURL: "https://blockscout.dev.gblend.xyz/api/",
-          browserURL: "https://blockscout.dev.gblend.xyz"
-        }
-      }
-    ]
-  }
+    enabled: false,
+  },
 };
 EOF
 
@@ -183,7 +174,7 @@ async function main() {
     try {
       await hre.run("verify:verify", {
         address,
-        constructorArguments: []
+        constructorArguments: [],
       });
       console.log("✅ Verified successfully!");
     } catch (err) {
@@ -201,7 +192,7 @@ main().catch((error) => {
 EOF
 
 print_command "Creating transfer script..."
-cat <<EOF > scripts/transfer.js
+cat <<'EOF' > scripts/transfer.js
 const hre = require("hardhat");
 const ethers = hre.ethers;
 const fs = require("fs");
@@ -218,12 +209,12 @@ async function main() {
     const to = wallet.address;
     const amount = BigInt((Math.floor(Math.random() * 99001) + 1000)) * 10n ** BigInt(DECIMALS);
 
-    console.log(`Transfer #\${i} to \${to}, amount: \${amount}`);
+    console.log(`Transfer #${i} to ${to}, amount: ${amount}`);
     const tx = await token.transfer(to, amount);
     await tx.wait();
 
     const sleep = Math.floor(Math.random() * 11) + 20;
-    console.log(`Sleeping \${sleep} sec...`);
+    console.log(`Sleeping ${sleep} sec...`);
     await new Promise(res => setTimeout(res, sleep * 1000));
   }
 
@@ -236,6 +227,7 @@ main().catch((error) => {
 });
 EOF
 
+
 print_command "Deploying contract..."
 npx hardhat run scripts/deploy.js --network custom
 
@@ -246,3 +238,4 @@ print_command "Executing transfers..."
 npx hardhat run scripts/transfer.js --network custom
 
 print_command "Done."
+
