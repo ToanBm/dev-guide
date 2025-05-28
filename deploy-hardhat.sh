@@ -195,6 +195,7 @@ async function main() {
             setTimeout(() => reject(new Error("tx.wait() timeout")), 15000)
           )
         ]);
+        console.log("✅ Transfer success!");
         break; // success
       } catch (err) {
         console.warn(`Retry #${retry + 1} failed: ${err.message}`);
