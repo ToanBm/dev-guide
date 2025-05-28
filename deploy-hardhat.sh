@@ -243,6 +243,11 @@ main().catch((error) => {
 });
 EOF
 
+print_command "🚀 Deploying contract..."
+npx hardhat run scripts/deploy.js --network custom
+
+sleep 3
+
 read -p "How many transfers do you want to make? " NUM_TRANSFERS
 export NUM_TRANSFERS
 export TOKEN_SYMBOL=$TOKEN_SYMBOL
