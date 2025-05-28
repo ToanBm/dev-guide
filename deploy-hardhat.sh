@@ -32,7 +32,6 @@ case $rpc_choice in
     RPC_URL="https://testnet-rpc.monad.xyz"
     CHAIN=10143
     NETWORK_NAME="monadTestnet"
-    VERIFIER="sourcify"
     VERIFY_URL="https://sourcify-api-monad.blockvision.org"
     EXPLORER_URL="https://testnet.monadexplorer.com"
     SKIP_VERIFY=false
@@ -41,7 +40,6 @@ case $rpc_choice in
     RPC_URL="https://dream-rpc.somnia.network"
     CHAIN=50312
     NETWORK_NAME="somniaTestnet"
-    VERIFIER="blockscout"
     VERIFY_URL="https://shannon-explorer.somnia.network/api"
     EXPLORER_URL="https://shannon-explorer.somnia.network"
     SKIP_VERIFY=true
@@ -50,7 +48,6 @@ case $rpc_choice in
     RPC_URL="https://rpc.dev.gblend.xyz/"
     CHAIN=20993
     NETWORK_NAME="fluentDevnet"
-    VERIFIER="blockscout"
     VERIFY_URL="https://blockscout.dev.gblend.xyz/api/"
     EXPLORER_URL="https://blockscout.dev.gblend.xyz"
     SKIP_VERIFY=true
@@ -59,13 +56,12 @@ case $rpc_choice in
     RPC_URL="https://evmrpc-testnet.0g.ai"
     CHAIN=80087
     NETWORK_NAME="zeroGTestnet"
-    VERIFIER="none"
     VERIFY_URL="no"
     EXPLORER_URL="no"
     SKIP_VERIFY=true
     ;;
   *)
-    echo "❌ Invalid selection"
+    echo "❌ Invalid option!"
     exit 1
     ;;
 esac
@@ -111,18 +107,11 @@ cat <<EOF > .env
 PRIVATE_KEY=$PRIVATE_KEY
 RPC_URL=$RPC_URL
 CHAIN=$CHAIN
-SKIP_VERIFY=$SKIP_VERIFY
-VERIFIER=$VERIFIER
-VERIFY_URL=$VERIFY_URL
-EXPLORER_URL=$EXPLORER_URL
-NETWORK_NAME=$NETWORK_NAME
 EOF
 
 cat > hardhat.config.js <<EOF
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
-
-const verifier = "${VERIFIER}";
 
 module.exports = {
   solidity: "0.8.20",
@@ -132,25 +121,6 @@ module.exports = {
       chainId: ${CHAIN},
       accounts: ["0x${PRIVATE_KEY}"]
     }
-  },
-  sourcify: {
-    enabled: verifier === "sourcify",
-    apiUrl: verifier === "sourcify" ? "${VERIFIER_URL}" : "",
-    browserUrl: verifier === "sourcify" ? "${EXPLORER_URL}" : ""
-  },
-  etherscan: {
-    enabled: verifier === "blockscout",
-    apiKey: "none",
-    customChains: [
-      {
-        network: "${NETWORK_NAME}",
-        chainId: ${CHAIN},
-        urls: {
-          apiURL: "${VERIFIER_URL}",
-          browserURL: "${EXPLORER_URL}"
-        }
-      }
-    ]
   }
 };
 EOF
@@ -168,23 +138,6 @@ async function main() {
   const address = token.target;
   console.log("✅ Deployed to:", address);
   fs.writeFileSync("contract-address.txt", address);
-
-  const skipVerify = process.env.SKIP_VERIFY === "true";
-
-  if (!skipVerify) {
-    console.log("🔍 Verifying contract...");
-    try {
-      await hre.run("verify:verify", {
-        address,
-        constructorArguments: []
-      });
-      console.log("✅ Verified successfully!");
-    } catch (err) {
-      console.error("❌ Verification failed:", err.message);
-    }
-  } else {
-    console.log("ℹ️ Skipping verification");
-  }
 }
 
 main().catch((error) => {
@@ -192,7 +145,6 @@ main().catch((error) => {
   process.exitCode = 1;
 });
 EOF
-
 
 cat <<'EOF' > scripts/transfer.js
 const hre = require("hardhat");
@@ -204,7 +156,7 @@ async function main() {
   const token = await ethers.getContractAt("MyToken", address);
 
   const DECIMALS = 18;
-  const SYMBOL = process.env.TOKEN_SYMBOL || "TOKEN";
+  const SYMBOL = await token.symbol();
   const NUM_TRANSFERS = parseInt(process.env.NUM_TRANSFERS || "3");
 
   for (let i = 1; i <= NUM_TRANSFERS; i++) {
