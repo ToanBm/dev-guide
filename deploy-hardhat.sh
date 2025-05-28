@@ -30,18 +30,30 @@ case $rpc_choice in
   1)
     RPC_URL="https://testnet-rpc.monad.xyz"
     CHAIN=10143
+    NETWORK_NAME="monad"
+    VERIFIER_URL="https://sourcify-api-monad.blockvision.org"
+    SKIP_VERIFY=false
     ;;
   2)
     RPC_URL="https://dream-rpc.somnia.network"
     CHAIN=50312
+    NETWORK_NAME="somnia"
+    VERIFIER_URL="https://shannon-explorer.somnia.network/api"
+    SKIP_VERIFY=false
     ;;
   3)
     RPC_URL="https://rpc.dev.gblend.xyz/"
     CHAIN=20993
+    NETWORK_NAME="fluent"
+    VERIFIER_URL="https://blockscout.dev.gblend.xyz/api/"
+    SKIP_VERIFY=false
     ;;
   4)
     RPC_URL="https://evmrpc-testnet.0g.ai"
     CHAIN=80087
+    NETWORK_NAME="0g"
+    VERIFIER_URL="no"
+    SKIP_VERIFY=true
     ;;
   *)
     echo "❌ Invalid option!"
@@ -91,12 +103,18 @@ contract MyToken {
 }
 EOF
 
+rm contracts/Lock.sol
+
 read -p "Enter your EVM wallet private key (without 0x): " PRIVATE_KEY
 
 print_command "Generating .env file..."
 cat <<EOF > .env
 PRIVATE_KEY=$PRIVATE_KEY
 RPC_URL=$RPC_URL
+CHAIN=$CHAIN
+NETWORK_NAME=$NETWORK_NAME
+VERIFIER_URL=$VERIFIER_URL
+SKIP_VERIFY=$SKIP_VERIFY
 EOF
 
 print_command "Updating hardhat.config.js..."
@@ -109,12 +127,38 @@ module.exports = {
   networks: {
     custom: {
       url: process.env.RPC_URL,
-      chainId: $CHAIN,
+      chainId: parseInt(process.env.CHAIN),
       accounts: ["0x" + process.env.PRIVATE_KEY]
     }
   },
   etherscan: {
-    apiKey: "YOUR_API_KEY"
+    apiKey: "DUMMY_API_KEY", // placeholder
+    customChains: [
+      {
+        network: "monad",
+        chainId: 10143,
+        urls: {
+          apiURL: "https://sourcify-api-monad.blockvision.org",
+          browserURL: "https://explorer.monad.xyz"
+        }
+      },
+      {
+        network: "somnia",
+        chainId: 50312,
+        urls: {
+          apiURL: "https://shannon-explorer.somnia.network/api",
+          browserURL: "https://shannon-explorer.somnia.network"
+        }
+      },
+      {
+        network: "fluent",
+        chainId: 20993,
+        urls: {
+          apiURL: "https://blockscout.dev.gblend.xyz/api/",
+          browserURL: "https://blockscout.dev.gblend.xyz"
+        }
+      }
+    ]
   }
 };
 EOF
@@ -133,15 +177,20 @@ async function main() {
   console.log("✅ Deployed to:", address);
   fs.writeFileSync("contract-address.txt", address);
 
-  console.log("🔍 Verifying contract...");
-  try {
-    await hre.run("verify:verify", {
-      address,
-      constructorArguments: []
-    });
-    console.log("✅ Verified successfully!");
-  } catch (err) {
-    console.error("❌ Verification failed:", err.message);
+  const skipVerify = process.env.SKIP_VERIFY === "true";
+  if (!skipVerify) {
+    console.log("🔍 Verifying contract...");
+    try {
+      await hre.run("verify:verify", {
+        address,
+        constructorArguments: []
+      });
+      console.log("✅ Verified successfully!");
+    } catch (err) {
+      console.error("❌ Verification failed:", err.message);
+    }
+  } else {
+    console.log("ℹ️ Skipping verification on this network.");
   }
 }
 
@@ -169,12 +218,12 @@ async function main() {
     const to = wallet.address;
     const amount = BigInt((Math.floor(Math.random() * 99001) + 1000)) * 10n ** BigInt(DECIMALS);
 
-    console.log(`🔢 Transfer #${i} to \${to}, amount: \${amount}`);
+    console.log(`Transfer #\${i} to \${to}, amount: \${amount}`);
     const tx = await token.transfer(to, amount);
     await tx.wait();
 
     const sleep = Math.floor(Math.random() * 11) + 20;
-    console.log(`⏳ Sleeping \${sleep} sec...`);
+    console.log(`Sleeping \${sleep} sec...`);
     await new Promise(res => setTimeout(res, sleep * 1000));
   }
 
