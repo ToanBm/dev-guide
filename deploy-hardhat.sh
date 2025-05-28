@@ -30,7 +30,7 @@ case $rpc_choice in
     RPC_URL="https://testnet-rpc.monad.xyz"
     CHAIN=10143
     NETWORK_NAME="monadTestnet"
-    API_URL="https://sourcify-api-monad.blockvision.org"
+    VERIFY_URL="https://sourcify-api-monad.blockvision.org"
     EXPLORER_URL="https://testnet.monadexplorer.com"
     SKIP_VERIFY=false
     ;;
@@ -38,24 +38,24 @@ case $rpc_choice in
     RPC_URL="https://dream-rpc.somnia.network"
     CHAIN=50312
     NETWORK_NAME="somniaTestnet"
-    API_URL="https://shannon-explorer.somnia.network/api"
+    VERIFY_URL="https://shannon-explorer.somnia.network/api"
     EXPLORER_URL="https://shannon-explorer.somnia.network"
-    SKIP_VERIFY=false
+    SKIP_VERIFY=true
     ;;
   3)
     RPC_URL="https://rpc.dev.gblend.xyz/"
     CHAIN=20993
     NETWORK_NAME="fluentDevnet"
-    API_URL="https://blockscout.dev.gblend.xyz/api/"
+    VERIFY_URL="https://blockscout.dev.gblend.xyz/api/"
     EXPLORER_URL="https://blockscout.dev.gblend.xyz"
-    SKIP_VERIFY=false
+    SKIP_VERIFY=true
     ;;
   4)
     RPC_URL="https://evmrpc-testnet.0g.ai"
     CHAIN=80087
     NETWORK_NAME="zeroGTestnet"
-    API_URL=""
-    EXPLORER_URL=""
+    VERIFY_URL="no"
+    EXPLORER_URL="no"
     SKIP_VERIFY=true
     ;;
   *)
@@ -105,7 +105,6 @@ cat <<EOF > .env
 PRIVATE_KEY=$PRIVATE_KEY
 RPC_URL=$RPC_URL
 CHAIN=$CHAIN
-NETWORK_NAME=$NETWORK_NAME
 SKIP_VERIFY=$SKIP_VERIFY
 EOF
 
@@ -116,44 +115,22 @@ require("dotenv").config();
 module.exports = {
   solidity: "0.8.20",
   networks: {
-    [process.env.NETWORK_NAME]: {
+    custom: {
       url: process.env.RPC_URL,
       chainId: parseInt(process.env.CHAIN),
       accounts: ["0x" + process.env.PRIVATE_KEY]
     }
   },
+  sourcify: {
+    enabled: true,
+    apiUrl: "$VERIFY_URL",
+    browserUrl: "$EXPLORER_URL"
+  },
   etherscan: {
-    apiKey: "DUMMY_API_KEY",
-    customChains: [
-      {
-        network: "monadTestnet",
-        chainId: 10143,
-        urls: {
-          apiURL: "https://sourcify-api-monad.blockvision.org",
-          browserURL: "https://testnet.monadexplorer.com"
-        }
-      },
-      {
-        network: "somniaTestnet",
-        chainId: 50312,
-        urls: {
-          apiURL: "https://shannon-explorer.somnia.network/api",
-          browserURL: "https://shannon-explorer.somnia.network"
-        }
-      },
-      {
-        network: "fluentDevnet",
-        chainId: 20993,
-        urls: {
-          apiURL: "https://blockscout.dev.gblend.xyz/api/",
-          browserURL: "https://blockscout.dev.gblend.xyz"
-        }
-      }
-    ]
+    enabled: false
   }
 };
 EOF
-
 
 mkdir -p scripts
 cat <<'EOF' > scripts/deploy.js
@@ -225,12 +202,12 @@ main().catch((error) => {
 EOF
 
 print_command "🚀 Deploying contract..."
-npx hardhat run scripts/deploy.js --network "$NETWORK_NAME"
+npx hardhat run scripts/deploy.js --network custom
 
 read -p "How many transfers do you want to make? " NUM_TRANSFERS
 export NUM_TRANSFERS
 
 print_command "🔁 Executing transfers..."
-npx hardhat run scripts/transfer.js --network "$NETWORK_NAME"
+npx hardhat run scripts/transfer.js --network custom
 
 print_command "🎉 Done."
