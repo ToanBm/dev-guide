@@ -18,6 +18,8 @@ npx hardhat init --force <<EOF
 1
 EOF
 
+while true; do
+
 echo "🌐 Select Network:"
 echo "1) Monad Testnet"
 echo "2) Somnia Testnet"
@@ -30,6 +32,7 @@ case $rpc_choice in
     RPC_URL="https://testnet-rpc.monad.xyz"
     CHAIN=10143
     NETWORK_NAME="monadTestnet"
+    VERIFIER="sourcify"
     VERIFY_URL="https://sourcify-api-monad.blockvision.org"
     EXPLORER_URL="https://testnet.monadexplorer.com"
     SKIP_VERIFY=false
@@ -38,6 +41,7 @@ case $rpc_choice in
     RPC_URL="https://dream-rpc.somnia.network"
     CHAIN=50312
     NETWORK_NAME="somniaTestnet"
+    VERIFIER="blockscout"
     VERIFY_URL="https://shannon-explorer.somnia.network/api"
     EXPLORER_URL="https://shannon-explorer.somnia.network"
     SKIP_VERIFY=true
@@ -46,6 +50,7 @@ case $rpc_choice in
     RPC_URL="https://rpc.dev.gblend.xyz/"
     CHAIN=20993
     NETWORK_NAME="fluentDevnet"
+    VERIFIER="blockscout"
     VERIFY_URL="https://blockscout.dev.gblend.xyz/api/"
     EXPLORER_URL="https://blockscout.dev.gblend.xyz"
     SKIP_VERIFY=true
@@ -54,12 +59,13 @@ case $rpc_choice in
     RPC_URL="https://evmrpc-testnet.0g.ai"
     CHAIN=80087
     NETWORK_NAME="zeroGTestnet"
+    VERIFIER="none"
     VERIFY_URL="no"
     EXPLORER_URL="no"
     SKIP_VERIFY=true
     ;;
   *)
-    echo "❌ Invalid option!"
+    echo "❌ Invalid selection"
     exit 1
     ;;
 esac
@@ -106,31 +112,49 @@ PRIVATE_KEY=$PRIVATE_KEY
 RPC_URL=$RPC_URL
 CHAIN=$CHAIN
 SKIP_VERIFY=$SKIP_VERIFY
+VERIFIER=$VERIFIER
+VERIFY_URL=$VERIFY_URL
+EXPLORER_URL=$EXPLORER_URL
+NETWORK_NAME=$NETWORK_NAME
 EOF
 
-cat <<EOF > hardhat.config.js
+cat > hardhat.config.js <<EOF
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
+
+const verifier = "${VERIFIER}";
 
 module.exports = {
   solidity: "0.8.20",
   networks: {
     custom: {
-      url: process.env.RPC_URL,
-      chainId: parseInt(process.env.CHAIN),
-      accounts: ["0x" + process.env.PRIVATE_KEY]
+      url: "${RPC_URL}",
+      chainId: ${CHAIN},
+      accounts: ["0x${PRIVATE_KEY}"]
     }
   },
   sourcify: {
-    enabled: true,
-    apiUrl: "$VERIFY_URL",
-    browserUrl: "$EXPLORER_URL"
+    enabled: verifier === "sourcify",
+    apiUrl: verifier === "sourcify" ? "${VERIFIER_URL}" : "",
+    browserUrl: verifier === "sourcify" ? "${EXPLORER_URL}" : ""
   },
   etherscan: {
-    enabled: false
+    enabled: verifier === "blockscout",
+    apiKey: "none",
+    customChains: [
+      {
+        network: "${NETWORK_NAME}",
+        chainId: ${CHAIN},
+        urls: {
+          apiURL: "${VERIFIER_URL}",
+          browserURL: "${EXPLORER_URL}"
+        }
+      }
+    ]
   }
 };
 EOF
+
 
 mkdir -p scripts
 cat <<'EOF' > scripts/deploy.js
@@ -145,7 +169,9 @@ async function main() {
   console.log("✅ Deployed to:", address);
   fs.writeFileSync("contract-address.txt", address);
 
-  if (process.env.SKIP_VERIFY !== "true") {
+  const skipVerify = process.env.SKIP_VERIFY === "true";
+
+  if (!skipVerify) {
     console.log("🔍 Verifying contract...");
     try {
       await hre.run("verify:verify", {
@@ -162,28 +188,32 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error);
+  console.error("🚨 Deployment failed:", error);
   process.exitCode = 1;
 });
 EOF
 
+
 cat <<'EOF' > scripts/transfer.js
 const hre = require("hardhat");
+const ethers = hre.ethers;
 const fs = require("fs");
 
 async function main() {
   const address = fs.readFileSync("contract-address.txt", "utf8").trim();
-  const token = await hre.ethers.getContractAt("MyToken", address);
+  const token = await ethers.getContractAt("MyToken", address);
 
   const DECIMALS = 18;
+  const SYMBOL = process.env.TOKEN_SYMBOL || "TOKEN";
   const NUM_TRANSFERS = parseInt(process.env.NUM_TRANSFERS || "3");
 
   for (let i = 1; i <= NUM_TRANSFERS; i++) {
-    const wallet = hre.ethers.Wallet.createRandom();
+    const wallet = ethers.Wallet.createRandom();
     const to = wallet.address;
-    const amount = BigInt((Math.floor(Math.random() * 99001) + 1000)) * 10n ** BigInt(DECIMALS);
+    const rawAmount = Math.floor(Math.random() * 99001) + 1000;
+    const amount = BigInt(rawAmount) * 10n ** BigInt(DECIMALS);
 
-    console.log(`Transfer #${i} to ${to}, amount: ${amount}`);
+    console.log(`Transfer #${i} to ${to}, amount: ${rawAmount} ${SYMBOL}`);
     const tx = await token.transfer(to, amount);
     await tx.wait();
 
@@ -211,3 +241,11 @@ print_command "🔁 Executing transfers..."
 npx hardhat run scripts/transfer.js --network custom
 
 print_command "🎉 Done."
+
+read -p "Do you want to deploy a new token on another network? (y/n): " CONTINUE
+if [[ "$CONTINUE" != "y" ]]; then
+  break
+fi
+
+echo
+done
