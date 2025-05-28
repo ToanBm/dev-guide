@@ -184,19 +184,29 @@ async function main() {
     const amount = BigInt(rawAmount) * 10n ** BigInt(DECIMALS);
 
     console.log(`Transfer #${i} to ${to}, amount: ${rawAmount} ${SYMBOL}`);
-    // ✅ Retry logic
-  let retry = 0;
-  while (retry < 2) {
-    try {
-      const tx = await token.transfer(to, amount);
-      await tx.wait();
-      break; // success
-    } catch (err) {
-      console.warn(`Retry #${retry + 1} after error: ${err.message}`);
-      retry++;
-      await new Promise(res => setTimeout(res, 3000)); // retry delay
+
+    let retry = 0;
+    while (retry < 2) {
+      try {
+        const tx = await token.transfer(to, amount);
+        await Promise.race([
+          tx.wait(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("tx.wait() timeout")), 15000)
+          )
+        ]);
+        break; // success
+      } catch (err) {
+        console.warn(`Retry #${retry + 1} failed: ${err.message}`);
+        retry++;
+        await new Promise(res => setTimeout(res, 3000)); // retry delay
+      }
     }
-  }
+
+    if (retry === 2) {
+      console.error(`❌ Transfer #${i} to ${to} failed after 2 retries.`);
+    }
+
     const sleep = Math.floor(Math.random() * 11) + 10;
     console.log(`Sleeping ${sleep} sec...`);
     await new Promise(res => setTimeout(res, sleep * 1000));
@@ -206,10 +216,11 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error);
+  console.error("🚨 Script crashed:", error);
   process.exitCode = 1;
 });
 EOF
+
 
 print_command "🚀 Deploying contract..."
 npx hardhat run scripts/deploy.js --network custom
