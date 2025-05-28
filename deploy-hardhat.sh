@@ -40,7 +40,7 @@ case $rpc_choice in
     NETWORK_NAME="somniaTestnet"
     API_URL="https://shannon-explorer.somnia.network/api"
     EXPLORER_URL="https://shannon-explorer.somnia.network"
-    SKIP_VERIFY=true
+    SKIP_VERIFY=false
     ;;
   3)
     RPC_URL="https://rpc.dev.gblend.xyz/"
@@ -48,7 +48,7 @@ case $rpc_choice in
     NETWORK_NAME="fluentDevnet"
     API_URL="https://blockscout.dev.gblend.xyz/api/"
     EXPLORER_URL="https://blockscout.dev.gblend.xyz"
-    SKIP_VERIFY=true
+    SKIP_VERIFY=false
     ;;
   4)
     RPC_URL="https://evmrpc-testnet.0g.ai"
@@ -154,6 +154,7 @@ module.exports = {
 };
 EOF
 
+
 mkdir -p scripts
 cat <<'EOF' > scripts/deploy.js
 const hre = require("hardhat");
@@ -233,4 +234,3 @@ print_command "🔁 Executing transfers..."
 npx hardhat run scripts/transfer.js --network "$NETWORK_NAME"
 
 print_command "🎉 Done."
-
