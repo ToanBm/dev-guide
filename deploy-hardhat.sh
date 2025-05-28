@@ -184,10 +184,20 @@ async function main() {
     const amount = BigInt(rawAmount) * 10n ** BigInt(DECIMALS);
 
     console.log(`Transfer #${i} to ${to}, amount: ${rawAmount} ${SYMBOL}`);
-    const tx = await token.transfer(to, amount);
-    await tx.wait();
-
-    const sleep = Math.floor(Math.random() * 11) + 20;
+    // ✅ Retry logic
+  let retry = 0;
+  while (retry < 2) {
+    try {
+      const tx = await token.transfer(to, amount);
+      await tx.wait();
+      break; // success
+    } catch (err) {
+      console.warn(`Retry #${retry + 1} after error: ${err.message}`);
+      retry++;
+      await new Promise(res => setTimeout(res, 3000)); // retry delay
+    }
+  }
+    const sleep = Math.floor(Math.random() * 11) + 10;
     console.log(`Sleeping ${sleep} sec...`);
     await new Promise(res => setTimeout(res, sleep * 1000));
   }
