@@ -25,6 +25,8 @@ echo "1) Monad Testnet"
 echo "2) Somnia Testnet"
 echo "3) Fluent Devnet"
 echo "4) 0G Galileo Testnet"
+echo "5) MEGA Testnet"
+echo "6) Pharos Testnet"
 read -p "Enter number: " rpc_choice
 
 case $rpc_choice in
@@ -58,6 +60,22 @@ case $rpc_choice in
     NETWORK_NAME="zeroGTestnet"
     VERIFY_URL="no"
     EXPLORER_URL="no"
+    SKIP_VERIFY=true
+    ;;
+  5)
+    RPC_URL="https://carrot.megaeth.com/rpc"
+    CHAIN=6342
+    NETWORK_NAME="megaTestnet"
+    VERIFY_URL="no"
+    EXPLORER_URL="https://megaexplorer.xyz"
+    SKIP_VERIFY=true
+    ;;
+  6)
+    RPC_URL="https://testnet.dplabs-internal.com"
+    CHAIN=688688
+    NETWORK_NAME="pharosTestnet"
+    VERIFY_URL="no"
+    EXPLORER_URL="https://testnet.pharosscan.xyz"
     SKIP_VERIFY=true
     ;;
   *)
