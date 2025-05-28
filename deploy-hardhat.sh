@@ -27,6 +27,7 @@ echo "3) Fluent Devnet"
 echo "4) 0G Galileo Testnet"
 echo "5) MEGA Testnet"
 echo "6) Pharos Testnet"
+echo "7) Sahara Testnet"
 read -p "Enter number: " rpc_choice
 
 case $rpc_choice in
@@ -76,6 +77,14 @@ case $rpc_choice in
     NETWORK_NAME="pharosTestnet"
     VERIFY_URL="no"
     EXPLORER_URL="https://testnet.pharosscan.xyz"
+    SKIP_VERIFY=true
+    ;;
+  7)
+    RPC_URL="https://testnet.saharalabs.ai"
+    CHAIN=313313
+    NETWORK_NAME="saharaTestnet"
+    VERIFY_URL="no"
+    EXPLORER_URL="https://testnet-explorer.saharalabs.ai"
     SKIP_VERIFY=true
     ;;
   *)
