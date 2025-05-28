@@ -21,6 +21,8 @@ npx hardhat init --force <<EOF
 1
 EOF
 
+while true; do
+
 # --- Select Network ---
 echo "Select Network:"
 echo "1) Monad Testnet"
@@ -249,3 +251,11 @@ print_command "🔁 Executing transfers..."
 npx hardhat run scripts/transfer.js --network custom
 
 print_command "🎉 Done."
+
+read -p "Do you want to deploy a new token on another network? (y/n): " CONTINUE
+if [[ "$CONTINUE" != "y" ]]; then
+  break
+fi
+
+echo
+done
