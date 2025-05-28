@@ -1,8 +1,12 @@
-## 1. Deploy with Foundry
+## 1. Deploy with Foundry (Fail)
 ```
 mkdir deploy-contract && cd deploy-contract && bash <(curl -s https://raw.githubusercontent.com/ToanBm/dev-guide/refs/heads/main/foundry-contract.sh)
 ```
-## 1. Deploy NFT contract Foundry
+## 2. Deploy with Hardhat
+```
+mkdir deploy-contract && cd deploy-contract && bash <(curl -s https://raw.githubusercontent.com/ToanBm/dev-guide/refs/heads/main/deploy-hardhat.sh)
+```
+## 3. Deploy NFT contract Foundry (Loading...)
 ```
 mkdir deploy-contract && cd deploy-contract && bash <(curl -s https://raw.githubusercontent.com/ToanBm/dev-guide/refs/heads/main/NFT-deploy.sh)
 ```
