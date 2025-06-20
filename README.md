@@ -10,3 +10,7 @@ mkdir deploy-contract && cd deploy-contract && bash <(curl -s https://raw.github
 ```
 mkdir deploy-contract && cd deploy-contract && bash <(curl -s https://raw.githubusercontent.com/ToanBm/dev-guide/refs/heads/main/NFT-deploy.sh)
 ```
+## 4. zkVerify
+```
+mkdir deploy-contract && cd deploy-contract && bash <(curl -s https://raw.githubusercontent.com/ToanBm/dev-guide/refs/heads/main/zkverify.sh)
+```
