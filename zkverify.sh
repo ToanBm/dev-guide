@@ -39,7 +39,8 @@ echo "✅ Preparing powers of tau and zkey..."
 snarkjs powersoftau new bn128 12 keys/pot12_0000.ptau -v
 snarkjs powersoftau contribute keys/pot12_0000.ptau keys/pot12_final.ptau --name="zkverify" -v -e="zkverify-challenge"
 snarkjs powersoftau prepare phase2 keys/pot12_final.ptau keys/pot12_final_prepared.ptau
-snarkjs groth16 setup circuits/multiplier.r1cs keys/pot12_final.ptau keys/multiplier_0000.zkey
+
+snarkjs groth16 setup circuits/multiplier.r1cs keys/pot12_final_prepared.ptau keys/multiplier_0000.zkey
 snarkjs zkey contribute keys/multiplier_0000.zkey keys/multiplier_final.zkey --name="zkverify" -v -e="zkverify-contrib"
 snarkjs zkey export verificationkey keys/multiplier_final.zkey keys/verification_key.json
 
