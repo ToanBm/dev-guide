@@ -98,6 +98,11 @@ for i in $(seq 1 $N); do
     -d @payload.json)
 
   echo "[$i] $RESPONSE" | tee -a submit.log
+  
+  # Random delay between 15 and 30 seconds
+DELAY=$(( RANDOM % 16 + 15 ))
+echo "⏳ Waiting for $DELAY seconds before next submission... "
+sleep $DELAY
 done
 
 echo "🎉 Done. All results saved in submit.log"
