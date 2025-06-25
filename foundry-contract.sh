@@ -160,7 +160,10 @@ for i in $(seq 1 $NUM_TRANSFERS); do
     AMOUNT_DISPLAY=$(( (RANDOM % 99001) + 1000 ))
     echo "🔢 Transfer #$i: Amount (display): $AMOUNT_DISPLAY"
 
-    AMOUNT_RAW=$(echo "$AMOUNT_DISPLAY * 10^$DECIMALS" | bc)
+    ### === PATCH START ===
+    # Thay bc bằng awk
+    AMOUNT_RAW=$(awk "BEGIN {printf \"%.0f\", $AMOUNT_DISPLAY * 10 ^ $DECIMALS}")
+    ### === PATCH END ===
 
     cast send $ADDRESS \
         "transfer(address,uint256)" $TO_ADDRESS $AMOUNT_RAW \
