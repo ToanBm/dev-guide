@@ -28,6 +28,8 @@ foundryup
 print_command "Initializing Foundry project..."
 forge init --force --commit
 
+while true; do
+
 # --- Create Network & Token Contract ---
 echo "Select Network:"
 echo "1) Monad Testnet"
@@ -159,12 +161,9 @@ for i in $(seq 1 $NUM_TRANSFERS); do
     TO_ADDRESS="0x$(openssl rand -hex 20)"
     AMOUNT_DISPLAY=$(( (RANDOM % 99001) + 1000 ))
     echo "🔢 Transfer #$i: Amount (display): $AMOUNT_DISPLAY"
-
-    ### === PATCH START ===
-    # Thay bc bằng awk
+    
     AMOUNT_RAW=$(awk "BEGIN {printf \"%.0f\", $AMOUNT_DISPLAY * 10 ^ $DECIMALS}")
-    ### === PATCH END ===
-
+    
     cast send $ADDRESS \
         "transfer(address,uint256)" $TO_ADDRESS $AMOUNT_RAW \
         --private-key "$PRIVATE_KEY" \
@@ -176,3 +175,13 @@ for i in $(seq 1 $NUM_TRANSFERS); do
 done
 
 echo "✅ All transfers completed!"
+
+read -p "Do you want to create another token? (y/n): " CONTINUE
+if [[ "$CONTINUE" != "y" ]]; then
+  echo "👋 Exiting..."
+  break
+fi
+
+done
+
+
