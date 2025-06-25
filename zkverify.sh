@@ -92,17 +92,31 @@ for i in $(seq 1 $N); do
 
   node scripts/generatePayload.js
 
-  echo "🚀 Submitting payload #$i..."
-  RESPONSE=$(curl -s -X POST https://relayer-api.horizenlabs.io/api/v1/submit-proof/$API_KEY \
-    -H "Content-Type: application/json" \
-    -d @payload.json)
+  SUCCESS=false
+  ATTEMPT=1
 
-  echo "[$i] $RESPONSE" | tee -a submit.log
-  
-  # Random delay between 15 and 30 seconds
-DELAY=$(( RANDOM % 16 + 15 ))
-echo "⏳ Waiting for $DELAY seconds before next submission... "
-sleep $DELAY
+  while [ $SUCCESS = false ] && [ $ATTEMPT -le 5 ]; do
+    echo "🚀 Submitting payload #$i (Attempt $ATTEMPT)..."
+    RESPONSE=$(curl -s -X POST https://relayer-api.horizenlabs.io/api/v1/submit-proof/$API_KEY \
+      -H "Content-Type: application/json" \
+      -d @payload.json)
+
+    echo "[$i][$ATTEMPT] $RESPONSE" | tee -a submit.log
+
+    if [[ $RESPONSE == *"Too Many Requests"* ]]; then
+      echo "⏳ Too Many Requests. Waiting before retry..."
+      RETRY_DELAY=$(( RANDOM % 61 + 60 )) # Wait 60-120s
+      echo "⏳ Waiting $RETRY_DELAY seconds before retry..."
+      sleep $RETRY_DELAY
+      ((ATTEMPT++))
+    else
+      SUCCESS=true
+    fi
+  done
+
+  DELAY=$(( RANDOM % 31 + 30 )) # Wait 30-60s before next submission
+  echo "⏳ Waiting $DELAY seconds before next submission... "
+  sleep $DELAY
 done
 
 echo "🎉 Done. All results saved in submit.log"
