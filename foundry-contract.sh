@@ -17,14 +17,16 @@ print_command() {
 # --- Install Foundry ---
 print_command "Installing Foundry..."
 curl -L https://foundry.paradigm.xyz | bash
+sleep 2
 export PATH="$HOME/.foundry/bin:$PATH"
+forge --version
 
 sleep 2
 foundryup
 
 # --- Start Foundry Project ---
 print_command "Initializing Foundry project..."
-forge init --force --no-commit
+forge init --force --commit
 
 # --- Create Network & Token Contract ---
 echo "Select Network:"
