@@ -36,6 +36,7 @@ echo "1) Monad Testnet"
 echo "2) Somnia Testnet"
 echo "3) Fluent Devnet"
 echo "4) 0G Galileo Testnet"
+echo "5) Pharos Testnet"
 read -p "Enter number: " rpc_choice
 
 case $rpc_choice in
@@ -63,6 +64,13 @@ case $rpc_choice in
   4)
     RPC_URL="https://evmrpc-testnet.0g.ai"
     CHAIN=80087
+    VERIFIER=no
+    VERIFIER_URL="no"
+    SKIP_VERIFY=true
+    ;;
+  5)
+    RPC_URL="https://testnet.dplabs-internal.com"
+    CHAIN=688688
     VERIFIER=no
     VERIFIER_URL="no"
     SKIP_VERIFY=true
