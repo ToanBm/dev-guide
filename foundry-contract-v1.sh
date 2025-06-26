@@ -179,7 +179,7 @@ DECIMALS=18
 
 # --- Multi Transfer ---
 for TO_ADDRESS in "${ADDRESSES[@]}"; do
-    NUM_TRANSFERS=$(( (RANDOM % 6) + 5 ))  # Random từ 5 đến 10 transaction
+    NUM_TRANSFERS=$(( (RANDOM % 5) + 3 ))  # Random từ 3 đến 7 transaction
 
     echo "🚀 Starting transfers to $TO_ADDRESS - Total: $NUM_TRANSFERS"
 
