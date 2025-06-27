@@ -21,18 +21,20 @@ echo "✅ Compiling circuit..."
 mkdir -p zkverify/{circuits,keys,proofs,input,witness,scripts}
 cd zkverify
 
-cat > circuits/multiplier.circom <<EOF
-template Multiplier() {
+cat > circuits/add_and_multiply.circom <<EOF
+template AddAndMultiply() {
     signal input a;
     signal input b;
     signal input c;
-    c <== a * b;
+    signal input result;
+
+    result <== (a + b) * c;
 }
-component main = Multiplier();
+component main = AddAndMultiply();
 EOF
 
-circom circuits/multiplier.circom --r1cs --wasm --sym -o circuits/
-mv multiplier.* circuits/
+circom circuits/add_and_multiply.circom --r1cs --wasm --sym -o circuits/
+mv add_and_multiply.* circuits/
 
 # ========== STEP 3: PTAU & ZKEY ==========
 echo "✅ Preparing powers of tau and zkey..."
@@ -40,9 +42,9 @@ snarkjs powersoftau new bn128 12 keys/pot12_0000.ptau -v
 snarkjs powersoftau contribute keys/pot12_0000.ptau keys/pot12_final.ptau --name="zkverify" -v -e="zkverify-challenge"
 snarkjs powersoftau prepare phase2 keys/pot12_final.ptau keys/pot12_final_prepared.ptau
 
-snarkjs groth16 setup circuits/multiplier.r1cs keys/pot12_final_prepared.ptau keys/multiplier_0000.zkey
-snarkjs zkey contribute keys/multiplier_0000.zkey keys/multiplier_final.zkey --name="zkverify" -v -e="zkverify-contrib"
-snarkjs zkey export verificationkey keys/multiplier_final.zkey keys/verification_key.json
+snarkjs groth16 setup circuits/add_and_multiply.r1cs keys/pot12_final_prepared.ptau keys/add_and_multiply_0000.zkey
+snarkjs zkey contribute keys/add_and_multiply_0000.zkey keys/add_and_multiply_final.zkey --name="zkverify" -v -e="zkverify-contrib"
+snarkjs zkey export verificationkey keys/add_and_multiply_final.zkey keys/verification_key.json
 
 # ========== STEP 4: CREATE generatePayload.js ==========
 echo "✅ Creating generatePayload.js..."
@@ -56,7 +58,7 @@ const vk = JSON.parse(fs.readFileSync("keys/verification_key.json", "utf8"));
 
 const payload = {
   proofType: "groth16",
-  vkRegistered: false,
+  vkRegistered: true,
   proofOptions: {
     library: "snarkjs",
     curve: "bn128"
@@ -84,11 +86,12 @@ for i in $(seq 1 $N); do
   echo "🔁 [$i/$N] Generating input..."
   A=$(( RANDOM % 50 + 1 ))
   B=$(( RANDOM % 50 + 1 ))
-  C=$(( A * B ))
-  echo "{ \"a\": $A, \"b\": $B, \"c\": $C }" > input/input.json
+  C=$(( RANDOM % 50 + 1 ))
+  RESULT=$(( (A + B) * C ))
+  echo "{ \"a\": $A, \"b\": $B, \"c\": $C, \"result\": $RESULT }" > input/input.json
 
-  snarkjs wtns calculate circuits/multiplier.wasm input/input.json witness/witness.wtns
-  snarkjs groth16 prove keys/multiplier_final.zkey witness/witness.wtns proofs/proof.json proofs/public.json
+  snarkjs wtns calculate circuits/add_and_multiply.wasm input/input.json witness/witness.wtns
+  snarkjs groth16 prove keys/add_and_multiply_final.zkey witness/witness.wtns proofs/proof.json proofs/public.json
 
   node scripts/generatePayload.js
 
