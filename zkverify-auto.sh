@@ -86,9 +86,8 @@ for i in $(seq 1 $N); do
   echo "🔁 [$i/$N] Generating input..."
   A=$(( RANDOM % 50 + 1 ))
   B=$(( RANDOM % 50 + 1 ))
-  C=$(( RANDOM % 50 + 1 ))
-  RESULT=$(( (A + B) * C ))
-  echo "{ \"a\": $A, \"b\": $B, \"c\": $C, \"result\": $RESULT }" > input/input.json
+  RESULT=$(( A + B + 5 ))
+  echo "{ \"a\": $A, \"b\": $B, \"result\": $RESULT }" > input/input.json
 
   snarkjs wtns calculate circuits/add_and_multiply.wasm input/input.json witness/witness.wtns
   snarkjs groth16 prove keys/add_and_multiply_final.zkey witness/witness.wtns proofs/proof.json proofs/public.json
