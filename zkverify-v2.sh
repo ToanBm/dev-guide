@@ -14,7 +14,7 @@ fi
 # ========== STEP 1: ENV SETUP ==========
 echo "✅ Installing dependencies..."
 sudo apt update && sudo apt install -y curl git jq
-npm install -g snarkjs circom
+npm install snarkjs circom circomlib
 
 # ========== STEP 2: COMPILE CIRCUIT ==========
 echo "✅ Compiling circuit..."
@@ -22,7 +22,7 @@ mkdir -p zkverify/{circuits,keys,proofs,input,witness,scripts}
 cd zkverify
 
 cat > circuits/add_and_multiply.circom <<EOF
-include "circomlib/sha256.circom";
+include "../node_modules/circomlib/circuits/sha256.circom";
 
 template QuizV3() {
     signal input a;
@@ -34,7 +34,7 @@ template QuizV3() {
     signal temp2;
 
     temp1 <== (a + b) * c;
-    temp2 <== temp1 + 7; // thêm logic mới
+    temp2 <== temp1 + 7;
 
     result === temp2;
 }
@@ -42,18 +42,18 @@ template QuizV3() {
 component main = QuizV3();
 EOF
 
-circom circuits/add_and_multiply.circom --r1cs --wasm --sym -o circuits/
+npx circom circuits/add_and_multiply.circom --r1cs --wasm --sym -o circuits/
 mv add_and_multiply.* circuits/
 
 # ========== STEP 3: PTAU & ZKEY ==========
 echo "✅ Preparing powers of tau and zkey..."
-snarkjs powersoftau new bn128 12 keys/pot12_0000.ptau -v
-snarkjs powersoftau contribute keys/pot12_0000.ptau keys/pot12_final.ptau --name="zkverify" -v -e="zkverify-challenge"
-snarkjs powersoftau prepare phase2 keys/pot12_final.ptau keys/pot12_final_prepared.ptau
+npx snarkjs powersoftau new bn128 12 keys/pot12_0000.ptau -v
+npx snarkjs powersoftau contribute keys/pot12_0000.ptau keys/pot12_final.ptau --name="zkverify" -v -e="zkverify-challenge"
+npx snarkjs powersoftau prepare phase2 keys/pot12_final.ptau keys/pot12_final_prepared.ptau
 
-snarkjs groth16 setup circuits/add_and_multiply.r1cs keys/pot12_final_prepared.ptau keys/add_and_multiply_0000.zkey
-snarkjs zkey contribute keys/add_and_multiply_0000.zkey keys/add_and_multiply_final.zkey --name="zkverify" -v -e="zkverify-contrib"
-snarkjs zkey export verificationkey keys/add_and_multiply_final.zkey keys/verification_key.json
+npx snarkjs groth16 setup circuits/add_and_multiply.r1cs keys/pot12_final_prepared.ptau keys/add_and_multiply_0000.zkey
+npx snarkjs zkey contribute keys/add_and_multiply_0000.zkey keys/add_and_multiply_final.zkey --name="zkverify" -v -e="zkverify-contrib"
+npx snarkjs zkey export verificationkey keys/add_and_multiply_final.zkey keys/verification_key.json
 
 # ========== STEP 4: CREATE generatePayload.js ==========
 echo "✅ Creating generatePayload.js..."
@@ -96,12 +96,12 @@ for i in $(seq 1 $N); do
   A=$(( RANDOM % 50 + 1 ))
   B=$(( RANDOM % 50 + 1 ))
   C=$(( RANDOM % 50 + 1 ))
-  RESULT=$(( ( (A + B) * C ) + 7 )) # Thêm +7 đúng theo circuit
+  RESULT=$(( ( (A + B) * C ) + 7 ))
 
   echo "{ \"a\": $A, \"b\": $B, \"c\": $C, \"result\": $RESULT }" > input/input.json
 
-  snarkjs wtns calculate circuits/add_and_multiply.wasm input/input.json witness/witness.wtns
-  snarkjs groth16 prove keys/add_and_multiply_final.zkey witness/witness.wtns proofs/proof.json proofs/public.json
+  npx snarkjs wtns calculate circuits/add_and_multiply.wasm input/input.json witness/witness.wtns
+  npx snarkjs groth16 prove keys/add_and_multiply_final.zkey witness/witness.wtns proofs/proof.json proofs/public.json
 
   node scripts/generatePayload.js
 
