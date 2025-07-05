@@ -22,15 +22,15 @@ mkdir -p zkverify/{circuits,keys,proofs,input,witness,scripts}
 cd zkverify
 
 cat > circuits/add_and_multiply.circom <<EOF
-template AddAndMultiply() {
+template QuizSimple() {
     signal input a;
     signal input b;
-    signal input c;
     signal input result;
 
-    result <== (a + b) * c;
+    result === (a + b + 5);
 }
-component main = AddAndMultiply();
+
+component main = QuizSimple();
 EOF
 
 circom circuits/add_and_multiply.circom --r1cs --wasm --sym -o circuits/
