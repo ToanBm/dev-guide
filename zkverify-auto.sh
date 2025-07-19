@@ -2,7 +2,7 @@
 
 set -e
 
-# Ask for API key and number of submissions
+# Hỏi API key từ người dùng
 read -p "🔐 Enter your API key: " API_KEY
 read -p "🔢 How many submissions to generate? " N
 
@@ -15,36 +15,43 @@ fi
 echo "✅ Installing dependencies..."
 sudo apt update && sudo apt install -y curl git jq
 npm install -g snarkjs circom
+npm install circomlib
 
 # ========== STEP 2: COMPILE CIRCUIT ==========
 echo "✅ Compiling circuit..."
-mkdir -p zkverify/{circuits,keys,proofs,input,witness,scripts}
-cd zkverify
+mkdir -p circuits/sum_greater_than_js keys proofs input witness scripts
 
-cat > circuits/add_and_multiply.circom <<EOF
-template QuizSimple() {
+cat > circuits/sum_greater_than.circom <<EOF
+pragma circom 2.0.0;
+include "../node_modules/circomlib/circuits/comparators.circom";
+
+template SumGreaterThan() {
     signal input a;
     signal input b;
-    signal input result;
+    signal output is_greater;
 
-    result === (a + b + 5);
+    signal sum;
+    sum <== a + b;
+
+    component gt = GreaterThan(16);
+    gt.in[0] <== sum;
+    gt.in[1] <== 10;
+    is_greater <== gt.out;
 }
 
-component main = QuizSimple();
+component main = SumGreaterThan();
 EOF
 
-circom circuits/add_and_multiply.circom --r1cs --wasm --sym -o circuits/
-mv add_and_multiply.* circuits/
+circom circuits/sum_greater_than.circom --r1cs --wasm --sym -o circuits/
 
 # ========== STEP 3: PTAU & ZKEY ==========
 echo "✅ Preparing powers of tau and zkey..."
-snarkjs powersoftau new bn128 12 keys/pot12_0000.ptau -v
-snarkjs powersoftau contribute keys/pot12_0000.ptau keys/pot12_final.ptau --name="zkverify" -v -e="zkverify-challenge"
-snarkjs powersoftau prepare phase2 keys/pot12_final.ptau keys/pot12_final_prepared.ptau
+snarkjs powersoftau new bn128 12 pot12_0000.ptau -v
+snarkjs powersoftau contribute pot12_0000.ptau pot12_0001.ptau --name="zkverify" -v -e="zkverify-challenge"
+snarkjs powersoftau prepare phase2 pot12_0001.ptau pot12_final.ptau
 
-snarkjs groth16 setup circuits/add_and_multiply.r1cs keys/pot12_final_prepared.ptau keys/add_and_multiply_0000.zkey
-snarkjs zkey contribute keys/add_and_multiply_0000.zkey keys/add_and_multiply_final.zkey --name="zkverify" -v -e="zkverify-contrib"
-snarkjs zkey export verificationkey keys/add_and_multiply_final.zkey keys/verification_key.json
+snarkjs groth16 setup circuits/sum_greater_than.r1cs pot12_final.ptau keys/sum_greater_than.zkey
+snarkjs zkey export verificationkey keys/sum_greater_than.zkey keys/verification_key.json
 
 # ========== STEP 4: CREATE generatePayload.js ==========
 echo "✅ Creating generatePayload.js..."
@@ -58,7 +65,7 @@ const vk = JSON.parse(fs.readFileSync("keys/verification_key.json", "utf8"));
 
 const payload = {
   proofType: "groth16",
-  vkRegistered: true,
+  vkRegistered: false,
   proofOptions: {
     library: "snarkjs",
     curve: "bn128"
@@ -84,13 +91,12 @@ echo "✅ Starting loop to create and submit payloads..."
 
 for i in $(seq 1 $N); do
   echo "🔁 [$i/$N] Generating input..."
-  A=$(( RANDOM % 50 + 1 ))
-  B=$(( RANDOM % 50 + 1 ))
-  RESULT=$(( A + B + 5 ))
-  echo "{ \"a\": $A, \"b\": $B, \"result\": $RESULT }" > input/input.json
+  A=$(( RANDOM % 20 + 1 ))
+  B=$(( RANDOM % 20 + 1 ))
+  echo "{ \"a\": $A, \"b\": $B }" > input/input.json
 
-  snarkjs wtns calculate circuits/add_and_multiply.wasm input/input.json witness/witness.wtns
-  snarkjs groth16 prove keys/add_and_multiply_final.zkey witness/witness.wtns proofs/proof.json proofs/public.json
+  snarkjs wtns calculate circuits/sum_greater_than_js/sum_greater_than.wasm input/input.json witness/witness.wtns
+  snarkjs groth16 prove keys/sum_greater_than.zkey witness/witness.wtns proofs/proof.json proofs/public.json
 
   node scripts/generatePayload.js
 
@@ -116,7 +122,7 @@ for i in $(seq 1 $N); do
     fi
   done
 
-  DELAY=$(( RANDOM % 101 + 100 )) # Wait 100-200s before next submission
+  DELAY=$(( RANDOM % 181 + 120 )) # Chờ ngẫu nhiên từ 120 đến 300 giây (2–5 phút)
   echo "⏳ Waiting $DELAY seconds before next submission... "
   sleep $DELAY
 done
