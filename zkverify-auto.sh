@@ -2,7 +2,7 @@
 
 set -e
 
-# Hỏi API key từ người dùng
+# Prompt for API key and number of submissions
 read -p "🔐 Enter your API key: " API_KEY
 read -p "🔢 How many submissions to generate? " N
 
@@ -11,10 +11,27 @@ if [[ -z "$API_KEY" || -z "$N" ]]; then
   exit 1
 fi
 
+# ========== STEP 0: CHECK CIRCOM VERSION ==========
+CIRCOM_VERSION=$(circom --version 2>/dev/null || echo "none")
+if [[ "$CIRCOM_VERSION" != 2* ]]; then
+  echo "❌ Circom 2.x is not installed or not the correct version!"
+  echo "👉 To install Circom 2.x, run the following commands (only once):"
+  echo -e "\n# Install Rust if not available"
+  echo "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
+  echo "# Clone Circom repo"
+  echo "git clone https://github.com/iden3/circom.git"
+  echo "cd circom"
+  echo "git checkout v2.1.9"
+  echo "cargo build --release"
+  echo "sudo cp target/release/circom /usr/local/bin/"
+  echo "cd .."
+  echo -e "\nThen re-run this script!"
+  exit 1
+fi
+
 # ========== STEP 1: ENV SETUP ==========
 echo "✅ Installing dependencies..."
 sudo apt update && sudo apt install -y curl git jq
-npm install -g snarkjs circom
 npm install circomlib
 
 # ========== STEP 2: COMPILE CIRCUIT ==========
@@ -122,9 +139,11 @@ for i in $(seq 1 $N); do
     fi
   done
 
-  DELAY=$(( RANDOM % 181 + 120 )) # Chờ ngẫu nhiên từ 120 đến 300 giây (2–5 phút)
+  DELAY=$(( RANDOM % 181 + 120 )) # Wait randomly from 120 to 300 seconds (2–5 minutes)
   echo "⏳ Waiting $DELAY seconds before next submission... "
   sleep $DELAY
 done
 
 echo "🎉 Done. All results saved in submit.log"
+
+echo -e "\n💡 Note: To avoid duplication, each user should change the circuit (file circuits/sum_greater_than.circom) to their own unique circuit!" 
