@@ -11,22 +11,32 @@ if [[ -z "$API_KEY" || -z "$N" ]]; then
   exit 1
 fi
 
-# ========== STEP 0: CHECK CIRCOM VERSION ==========
+# ========== STEP 0: CHECK & INSTALL RUST ==========
+echo "🔎 Checking for Rust..."
+if ! command -v cargo &> /dev/null; then
+  echo "⚙️  Rust not found. Installing Rust..."
+  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+  source $HOME/.cargo/env
+else
+  echo "✅ Rust is already installed."
+fi
+
+# ========== STEP 0.1: CHECK & INSTALL CIRCOM 2.x ==========
+echo "🔎 Checking for Circom 2.x..."
 CIRCOM_VERSION=$(circom --version 2>/dev/null || echo "none")
 if [[ "$CIRCOM_VERSION" != 2* ]]; then
-  echo "❌ Circom 2.x is not installed or not the correct version!"
-  echo "👉 To install Circom 2.x, run the following commands (only once):"
-  echo -e "\n# Install Rust if not available"
-  echo "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh"
-  echo "# Clone Circom repo"
-  echo "git clone https://github.com/iden3/circom.git"
-  echo "cd circom"
-  echo "git checkout v2.1.9"
-  echo "cargo build --release"
-  echo "sudo cp target/release/circom /usr/local/bin/"
-  echo "cd .."
-  echo -e "\nThen re-run this script!"
-  exit 1
+  echo "⚙️  Circom 2.x not found or wrong version. Installing Circom 2.1.9..."
+  if [ ! -d "circom" ]; then
+    git clone https://github.com/iden3/circom.git
+  fi
+  cd circom
+  git fetch --all
+  git checkout v2.1.9
+  cargo build --release
+  sudo cp target/release/circom /usr/local/bin/
+  cd ..
+else
+  echo "✅ Circom 2.x is already installed."
 fi
 
 # ========== STEP 1: ENV SETUP ==========
