@@ -12,5 +12,5 @@ mkdir deploy-contract && cd deploy-contract && bash <(curl -s https://raw.github
 ```
 ## 4. zkVerify
 ```
-mkdir zkverify && cd zkverify && bash <(curl -s https://raw.githubusercontent.com/ToanBm/dev-guide/refs/heads/main/zkverify.sh)
+mkdir zkverify && cd zkverify && bash <(curl -s https://raw.githubusercontent.com/ToanBm/dev-guide/refs/heads/main/zkverify-auto.sh)
 ```
