@@ -41,35 +41,35 @@ read -p "Enter number: " rpc_choice
 
 case $rpc_choice in
   1)
-    RPC_URL="https://testnet-rpc.monad.xyz"
+    DEFAULT_RPC="https://testnet-rpc.monad.xyz"
     CHAIN=10143
     VERIFIER=sourcify
     VERIFIER_URL="https://sourcify-api-monad.blockvision.org"
     SKIP_VERIFY=false
     ;;
   2)
-    RPC_URL="https://dream-rpc.somnia.network"
+    DEFAULT_RPC="https://dream-rpc.somnia.network"
     CHAIN=50312
     VERIFIER=blockscout
     VERIFIER_URL="https://shannon-explorer.somnia.network/api"
     SKIP_VERIFY=false
     ;;
   3)
-    RPC_URL="https://rpc.dev.gblend.xyz/"
+    DEFAULT_RPC="https://rpc.dev.gblend.xyz/"
     CHAIN=20993
     VERIFIER=blockscout
     VERIFIER_URL="https://blockscout.dev.gblend.xyz/api/"
     SKIP_VERIFY=false
     ;;
   4)
-    RPC_URL="https://evmrpc-testnet.0g.ai"
+    DEFAULT_RPC="https://evmrpc-testnet.0g.ai"
     CHAIN=80087
     VERIFIER=no
     VERIFIER_URL="no"
     SKIP_VERIFY=true
     ;;
   5)
-    RPC_URL="https://testnet.dplabs-internal.com"
+    DEFAULT_RPC="https://testnet.dplabs-internal.com"
     CHAIN=688688
     VERIFIER=no
     VERIFIER_URL="no"
@@ -80,6 +80,11 @@ case $rpc_choice in
     exit 1
     ;;
 esac
+
+# --- Custom RPC option ---
+read -p "Enter your custom RPC URL (Press Enter to use default: $DEFAULT_RPC): " CUSTOM_RPC
+RPC_URL=${CUSTOM_RPC:-$DEFAULT_RPC}
+echo "📡 Using RPC: $RPC_URL"
 
 read -p "Enter token name: " TOKEN_NAME
 read -p "Enter token symbol (e.g. ABC): " TOKEN_SYMBOL
