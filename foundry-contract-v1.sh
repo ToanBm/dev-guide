@@ -37,6 +37,7 @@ echo "2) Citrea Testnet"
 echo "3) Fluent Devnet"
 echo "4) 0G Galileo Testnet"
 echo "5) Pharos Testnet"
+echo "6) KiteAI Testnet"
 read -p "Enter number: " rpc_choice
 
 case $rpc_choice in
@@ -71,6 +72,13 @@ case $rpc_choice in
   5)
     DEFAULT_RPC="https://testnet.dplabs-internal.com"
     CHAIN=688688
+    VERIFIER=no
+    VERIFIER_URL="no"
+    SKIP_VERIFY=true
+    ;;
+  6)
+    DEFAULT_RPC="https://rpc-testnet.gokite.ai/"
+    CHAIN=2368
     VERIFIER=no
     VERIFIER_URL="no"
     SKIP_VERIFY=true
