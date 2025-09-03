@@ -33,7 +33,7 @@ while true; do
 # --- Create Network & Token Contract ---
 echo "Select Network:"
 echo "1) Monad Testnet"
-echo "2) Somnia Testnet"
+echo "2) Citrea Testnet"
 echo "3) Fluent Devnet"
 echo "4) 0G Galileo Testnet"
 echo "5) Pharos Testnet"
@@ -48,11 +48,11 @@ case $rpc_choice in
     SKIP_VERIFY=false
     ;;
   2)
-    DEFAULT_RPC="https://dream-rpc.somnia.network"
-    CHAIN=50312
-    VERIFIER=blockscout
-    VERIFIER_URL="https://shannon-explorer.somnia.network/api"
-    SKIP_VERIFY=false
+    DEFAULT_RPC="https://rpc.testnet.citrea.xyz"
+    CHAIN=5115
+    VERIFIER=no
+    VERIFIER_URL="no"
+    SKIP_VERIFY=true
     ;;
   3)
     DEFAULT_RPC="https://rpc.dev.gblend.xyz/"
