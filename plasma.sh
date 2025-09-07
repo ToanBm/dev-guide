@@ -181,6 +181,7 @@ echo "Deployed token address: $ADDRESS"
 ADDRESS_FILE="addresses.txt"
 DECIMALS=18
 
+# Create file if missing
 if [ ! -f "$ADDRESS_FILE" ]; then
   echo "📂 Creating address file: $ADDRESS_FILE"
   touch "$ADDRESS_FILE"
@@ -188,29 +189,54 @@ fi
 
 echo "📥 Please open the file: $ADDRESS_FILE"
 echo "👉 Paste the recipient wallet addresses (one per line)."
-if $have_tty; then
-  read -p "Press Enter when you have finished pasting the addresses..." _
+
+# Wait for user (prefer /dev/tty). If no TTY (e.g., curl|bash or CI), wait until file has at least 1 valid address.
+if [ -r /dev/tty ]; then
+  echo "✍️  Edit and save the file, then press Enter to continue..."
+  # shellcheck disable=SC2162
+  read _ </dev/tty
 else
-  echo "(No TTY; continuing assuming $ADDRESS_FILE already filled)"
+  echo "(No TTY detected) ⏳ Waiting until the file contains at least one valid EVM address..."
+  # loop until a line matches 0x + 40 hex chars
+  until grep -Eiq '^[[:space:]]*0x[0-9a-fA-F]{40}[[:space:]]*$' "$ADDRESS_FILE"; do
+    sleep 2
+  done
 fi
 
-mapfile -t ADDRESSES < "$ADDRESS_FILE"
+# Load, sanitize & validate addresses
+mapfile -t RAW_ADDRESSES < "$ADDRESS_FILE"
+ADDRESSES=()
+declare -A SEEN
+for line in "${RAW_ADDRESSES[@]}"; do
+  addr="$(echo "$line" | tr -d '\r' | xargs)"   # trim
+  if [[ "$addr" =~ ^0x[0-9a-fA-F]{40}$ ]]; then
+    # dedupe
+    if [ -z "${SEEN[$addr]:-}" ]; then
+      ADDRESSES+=("$addr")
+      SEEN[$addr]=1
+    fi
+  fi
+done
 
-# Helper: calc raw amount using local node + ethers (safe, no awk power issue)
+if [ ${#ADDRESSES[@]} -eq 0 ]; then
+  echo "⚠️  No valid addresses found in $ADDRESS_FILE. Abort."
+  exit 1
+fi
+
+# Helper: calc raw amount using local node + ethers (safer than awk for big ints)
 calc_amount_raw() {
   local display="$1"
   node -e "const {ethers}=require('ethers');console.log(ethers.parseUnits(String($display), $DECIMALS).toString())"
 }
 
 echo "Starting multi-transfer..."
-# Prefer cast if available; otherwise fallback to Node+ethers transfers
+# Prefer foundry 'cast'; fallback to Node+ethers if not present
 if command -v cast >/dev/null 2>&1; then
   echo "(Using foundry 'cast send')"
   for TO in "${ADDRESSES[@]}"; do
-    [ -z "$TO" ] && continue
     NUM_TRANSFERS=$(( (RANDOM % 5) + 3 ))  # 3..7
     echo "🚀 Transfers to $TO - total: $NUM_TRANSFERS"
-    for i in $(seq 1 $NUM_TRANSFERS); do
+    for i in $(seq 1 "$NUM_TRANSFERS"); do
       AMOUNT_DISPLAY=$(( (RANDOM % 99001) + 1000 )) # 1000..100000
       AMOUNT_RAW="$(calc_amount_raw "$AMOUNT_DISPLAY")"
       echo "🔢 #$i -> $TO : $AMOUNT_DISPLAY (raw: $AMOUNT_RAW)"
@@ -229,42 +255,38 @@ if command -v cast >/dev/null 2>&1; then
   done
 else
   echo "(foundry 'cast' not found) Fallback to Node+ethers for transfers"
-  # generate a temp JS sender using ethers v5
+  # temp JS sender using ethers v5
   cat > scripts/send-many.js <<'JS'
 require('dotenv').config();
+const fs = require('fs');
 const { ethers } = require('ethers');
 
 async function main() {
   const rpc = process.env.PLASMA_RPC || "https://testnet-rpc.plasma.to";
   const pk  = process.env.PRIVATE_KEY;
   const tokenAddr = process.env.TOKEN_ADDRESS;
-  const decimals = 18;
-
   const provider = new ethers.providers.JsonRpcProvider(rpc, { name: "plasma", chainId: 9746 });
   const wallet = new ethers.Wallet(pk, provider);
 
-  const abi = [
-    "function transfer(address to, uint256 value) public returns (bool)",
-    "function decimals() view returns (uint8)"
-  ];
+  const abi = ["function transfer(address to, uint256 value) public returns (bool)"];
   const token = new ethers.Contract(tokenAddr, abi, wallet);
 
-  const fs = require('fs');
-  const addrs = fs.readFileSync('addresses.txt', 'utf8').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  const lines = fs.readFileSync('addresses.txt','utf8').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  const addrs = Array.from(new Set(lines.filter(a=>/^0x[0-9a-fA-F]{40}$/.test(a))));
 
   for (const to of addrs) {
     const num = Math.floor(Math.random()*5)+3; // 3..7
     console.log(`Transfers to ${to} - total: ${num}`);
     for (let i=1;i<=num;i++){
       const display = Math.floor(Math.random()*99001)+1000; // 1000..100000
-      const raw = ethers.utils.parseUnits(String(display), decimals);
+      const raw = ethers.utils.parseUnits(String(display), 18);
       console.log(`#${i} -> ${to}: ${display} (raw ${raw.toString()})`);
       const tx = await token.transfer(to, raw);
       console.log(`tx: ${tx.hash}`);
       await tx.wait();
-      const sleep = Math.floor(Math.random()*11)+20; // 20..30
-      console.log(`sleep ${sleep}s...`);
-      await new Promise(r=>setTimeout(r, sleep*1000));
+      const sleepSec = Math.floor(Math.random()*11)+20; // 20..30
+      console.log(`sleep ${sleepSec}s...`);
+      await new Promise(r=>setTimeout(r, sleepSec*1000));
     }
   }
   console.log("All transfers completed.");
@@ -272,8 +294,7 @@ async function main() {
 main().catch(e=>{console.error(e);process.exit(1);});
 JS
 
-  TOKEN_ADDRESS="$ADDRESS" \
-  node scripts/send-many.js
+  TOKEN_ADDRESS="$ADDRESS" node scripts/send-many.js
 fi
 
 echo "✅ All transfers completed!"
