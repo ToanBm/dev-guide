@@ -49,16 +49,26 @@ else
   exit 1
 fi
 
-# -------- Step 1: Install hardhat + deps (your way) --------
-echo "Install Hardhat..."
+# -------- Step 1: Install hardhat + deps (PINNED VERSIONS) --------
+echo "Install Hardhat (v2) & deps..."
 npm init -y >/dev/null
-npm install --save-dev hardhat @nomiclabs/hardhat-ethers ethers@^5 @openzeppelin/contracts >/dev/null
+
+# Pin versions to avoid ERESOLVE with @nomiclabs/hardhat-ethers
+npm install --save-dev \
+  hardhat@2.26.3 \
+  @nomiclabs/hardhat-ethers@2.2.3 \
+  ethers@5.7.2 \
+  @openzeppelin/contracts@4 >/dev/null
+
 echo "Install dotenv..."
 npm install dotenv >/dev/null
 
 # -------- Step 2: Choose 'Create an empty hardhat.config.js' (option 3) --------
 echo "Creating project with an empty hardhat.config.js..."
-yes "3" | npx hardhat init >/dev/null
+# Try init (works on Hardhat v2). If it fails, continue (we overwrite config anyway).
+if ! yes "3" | npx hardhat init >/dev/null 2>&1; then
+  echo "(hardhat init skipped/fallback)"
+fi
 
 # -------- Step 3: Create ERC20 contract (name/symbol via constructor) --------
 echo "Create ERC20 contract..."
