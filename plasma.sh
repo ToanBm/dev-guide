@@ -1,9 +1,9 @@
 #!/bin/bash
 set -e
 
-# Logo
+# ===== UI =====
 echo -e "\033[0;34m"
-echo "Plasma ERC20 Auto Deployer"
+echo "Plasma ERC20 Auto Deployer + Multi-Transfer"
 echo -e "\e[0m"
 
 # -------- helpers (ENV-first, then prompt if TTY) --------
@@ -15,7 +15,6 @@ fi
 ask() {
   # $1 var name, $2 prompt, $3 silent? (true/false)
   local var="$1" prompt="$2" silent="${3:-false}"
-  # If provided via ENV, keep it
   if [ -n "${!var:-}" ]; then return 0; fi
   if $have_tty; then
     if [ "$silent" = "true" ]; then
@@ -49,11 +48,13 @@ else
   exit 1
 fi
 
-# -------- Step 1: Install hardhat + deps (PINNED VERSIONS) --------
-echo "Install Hardhat (v2) & deps..."
+PLASMA_RPC="${PLASMA_RPC:-https://testnet-rpc.plasma.to}"
+CHAIN_ID=9746
+
+# ===== 1) Init project & install deps (pinned to avoid ERESOLVE) =====
 npm init -y >/dev/null
 
-# Pin versions to avoid ERESOLVE with @nomiclabs/hardhat-ethers
+echo "Installing Hardhat (v2) & deps..."
 npm install --save-dev \
   hardhat@2.26.3 \
   @nomiclabs/hardhat-ethers@2.2.3 \
@@ -63,17 +64,16 @@ npm install --save-dev \
 echo "Install dotenv..."
 npm install dotenv >/dev/null
 
-# -------- Step 2: Choose 'Create an empty hardhat.config.js' (option 3) --------
+# ===== 2) Make empty hardhat.config.js (your way) =====
 echo "Creating project with an empty hardhat.config.js..."
-# Try init (works on Hardhat v2). If it fails, continue (we overwrite config anyway).
 if ! yes "3" | npx hardhat init >/dev/null 2>&1; then
   echo "(hardhat init skipped/fallback)"
 fi
 
-# -------- Step 3: Create ERC20 contract (name/symbol via constructor) --------
+# ===== 3) Contract =====
 echo "Create ERC20 contract..."
 mkdir -p contracts
-cat > contracts/MyToken.sol <<'EOL'
+cat > contracts/MyToken.sol <<'SOL'
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
@@ -86,27 +86,26 @@ contract MyToken is ERC20 {
         _mint(msg.sender, initialSupply);
     }
 }
-EOL
+SOL
 
-# -------- Step 4: Create .env --------
-echo "Create .env file..."
+# ===== 4) .env =====
+echo "Create .env..."
 cat > .env <<EOF
 TOKEN_NAME=${TOKEN_NAME}
 TOKEN_SYMBOL=${TOKEN_SYMBOL}
 TOTAL_SUPPLY=${TOTAL_SUPPLY}
 PRIVATE_KEY=${PRIVATE_KEY}
-PLASMA_RPC=${PLASMA_RPC:-https://testnet-rpc.plasma.to}
+PLASMA_RPC=${PLASMA_RPC}
 EOF
 
-# -------- Step 5: hardhat.config.js (Plasma testnet) --------
+# ===== 5) hardhat.config.js (Plasma testnet) =====
 echo "Creating new hardhat.config.js..."
 rm -f hardhat.config.js
-cat > hardhat.config.js <<'EOL'
+cat > hardhat.config.js <<'JS'
 /** @type import('hardhat/config').HardhatUserConfig */
 require('dotenv').config();
 require("@nomiclabs/hardhat-ethers");
 
-// normalize pk to 0x...
 function normalizePk(pk) {
   if (!pk) return undefined;
   return pk.startsWith('0x') ? pk : `0x${pk}`;
@@ -125,12 +124,14 @@ module.exports = {
     },
   }
 };
-EOL
+JS
 
-# -------- Step 6: deploy script (ethers v5 style) --------
+# ===== 6) deploy.js (ghi ra .deployed_address để bash đọc) =====
 echo "Creating deploy script..."
 mkdir -p scripts
-cat > scripts/deploy.js <<'EOL'
+cat > scripts/deploy.js <<'JS'
+const fs = require('fs');
+const path = require('path');
 const { ethers } = require("hardhat");
 
 async function main() {
@@ -149,23 +150,138 @@ async function main() {
   const token = await Token.deploy(name, symbol, initialSupply);
   await token.deployed();
 
-  console.log("✅ Token deployed to:", token.address);
-  console.log("Explorer:", `https://testnet.plasmascan.to/address/${token.address}`);
+  const addr = token.address;
+  console.log("✅ Token deployed to:", addr);
+  console.log("Explorer:", `https://testnet.plasmascan.to/address/${addr}`);
   console.log("Name/Symbol/Supply:", name, symbol, totalHuman);
-}
 
+  fs.writeFileSync(path.join(process.cwd(), ".deployed_address"), addr, "utf8");
+}
 main().catch((error) => {
   console.error(error);
   process.exit(1);
 });
-EOL
+JS
 
-# -------- Step 7: Compile --------
+# ===== 7) Compile & Deploy =====
 echo "Compile your contracts..."
 npx hardhat compile
 
-# -------- Step 8: Deploy --------
 echo "Deploy your contracts..."
 npx hardhat run scripts/deploy.js --network plasma
 
-echo "Thank you!"
+if [ ! -f ".deployed_address" ]; then
+  echo "Deploy seems to have failed (no .deployed_address)."
+  exit 1
+fi
+ADDRESS="$(cat .deployed_address)"
+echo "Deployed token address: $ADDRESS"
+
+# ===== 8) Multi-Transfer (addresses.txt + cast send) =====
+ADDRESS_FILE="addresses.txt"
+DECIMALS=18
+
+if [ ! -f "$ADDRESS_FILE" ]; then
+  echo "📂 Creating address file: $ADDRESS_FILE"
+  touch "$ADDRESS_FILE"
+fi
+
+echo "📥 Please open the file: $ADDRESS_FILE"
+echo "👉 Paste the recipient wallet addresses (one per line)."
+if $have_tty; then
+  read -p "Press Enter when you have finished pasting the addresses..." _
+else
+  echo "(No TTY; continuing assuming $ADDRESS_FILE already filled)"
+fi
+
+mapfile -t ADDRESSES < "$ADDRESS_FILE"
+
+# Helper: calc raw amount using local node + ethers (safe, no awk power issue)
+calc_amount_raw() {
+  local display="$1"
+  node -e "const {ethers}=require('ethers');console.log(ethers.parseUnits(String($display), $DECIMALS).toString())"
+}
+
+echo "Starting multi-transfer..."
+# Prefer cast if available; otherwise fallback to Node+ethers transfers
+if command -v cast >/dev/null 2>&1; then
+  echo "(Using foundry 'cast send')"
+  for TO in "${ADDRESSES[@]}"; do
+    [ -z "$TO" ] && continue
+    NUM_TRANSFERS=$(( (RANDOM % 5) + 3 ))  # 3..7
+    echo "🚀 Transfers to $TO - total: $NUM_TRANSFERS"
+    for i in $(seq 1 $NUM_TRANSFERS); do
+      AMOUNT_DISPLAY=$(( (RANDOM % 99001) + 1000 )) # 1000..100000
+      AMOUNT_RAW="$(calc_amount_raw "$AMOUNT_DISPLAY")"
+      echo "🔢 #$i -> $TO : $AMOUNT_DISPLAY (raw: $AMOUNT_RAW)"
+
+      cast send "$ADDRESS" \
+        "transfer(address,uint256)" "$TO" "$AMOUNT_RAW" \
+        --private-key "$PRIVATE_KEY" \
+        --rpc-url "$PLASMA_RPC"
+
+      SLEEP_TIME=$(( (RANDOM % 11) + 20 )) # 20..30
+      echo "⏳ Sleeping $SLEEP_TIME sec..."
+      sleep "$SLEEP_TIME"
+    done
+    echo "✅ Finished transfers to $TO"
+    echo "-----------------------------"
+  done
+else
+  echo "(foundry 'cast' not found) Fallback to Node+ethers for transfers"
+  # generate a temp JS sender using ethers v5
+  cat > scripts/send-many.js <<'JS'
+require('dotenv').config();
+const { ethers } = require('ethers');
+
+async function main() {
+  const rpc = process.env.PLASMA_RPC || "https://testnet-rpc.plasma.to";
+  const pk  = process.env.PRIVATE_KEY;
+  const tokenAddr = process.env.TOKEN_ADDRESS;
+  const decimals = 18;
+
+  const provider = new ethers.providers.JsonRpcProvider(rpc, { name: "plasma", chainId: 9746 });
+  const wallet = new ethers.Wallet(pk, provider);
+
+  const abi = [
+    "function transfer(address to, uint256 value) public returns (bool)",
+    "function decimals() view returns (uint8)"
+  ];
+  const token = new ethers.Contract(tokenAddr, abi, wallet);
+
+  const fs = require('fs');
+  const addrs = fs.readFileSync('addresses.txt', 'utf8').split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+
+  for (const to of addrs) {
+    const num = Math.floor(Math.random()*5)+3; // 3..7
+    console.log(`Transfers to ${to} - total: ${num}`);
+    for (let i=1;i<=num;i++){
+      const display = Math.floor(Math.random()*99001)+1000; // 1000..100000
+      const raw = ethers.utils.parseUnits(String(display), decimals);
+      console.log(`#${i} -> ${to}: ${display} (raw ${raw.toString()})`);
+      const tx = await token.transfer(to, raw);
+      console.log(`tx: ${tx.hash}`);
+      await tx.wait();
+      const sleep = Math.floor(Math.random()*11)+20; // 20..30
+      console.log(`sleep ${sleep}s...`);
+      await new Promise(r=>setTimeout(r, sleep*1000));
+    }
+  }
+  console.log("All transfers completed.");
+}
+main().catch(e=>{console.error(e);process.exit(1);});
+JS
+
+  TOKEN_ADDRESS="$ADDRESS" \
+  node scripts/send-many.js
+fi
+
+echo "✅ All transfers completed!"
+
+# Optional loop like your snippet
+if $have_tty; then
+  read -p "Do you want to create another token? (y/n): " CONTINUE
+  if [[ "$CONTINUE" != "y" ]]; then
+    echo "👋 Exiting..."
+  fi
+fi
