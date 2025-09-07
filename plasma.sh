@@ -79,6 +79,7 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
+/// @notice Simple ERC20 (18 decimals). Mints all initial supply to deployer.
 contract MyToken is ERC20 {
     constructor(string memory _name, string memory _symbol, uint256 initialSupply)
         ERC20(_name, _symbol)
@@ -126,7 +127,7 @@ module.exports = {
 };
 JS
 
-# ===== 6) deploy.js (ghi ra .deployed_address để bash đọc) =====
+# ===== 6) deploy.js (write .deployed_address for bash to consume) =====
 echo "Creating deploy script..."
 mkdir -p scripts
 cat > scripts/deploy.js <<'JS'
@@ -170,12 +171,27 @@ npx hardhat compile
 echo "Deploy your contracts..."
 npx hardhat run scripts/deploy.js --network plasma
 
-if [ ! -f ".deployed_address" ]; then
-  echo "Deploy seems to have failed (no .deployed_address)."
+# === Persist deployed address to .env (auto) ===
+# Read the address from .deployed_address, validate, then upsert .env
+if [ ! -f .deployed_address ]; then
+  echo "❌ Deploy didn't create .deployed_address. Abort."
   exit 1
 fi
-ADDRESS="$(cat .deployed_address)"
+
+ADDRESS="$(tr -d '\r' < .deployed_address | xargs)"
+if [[ ! "$ADDRESS" =~ ^0x[0-9a-fA-F]{40}$ ]]; then
+  echo "❌ Invalid address in .deployed_address: $ADDRESS"
+  exit 1
+fi
+
 echo "Deployed token address: $ADDRESS"
+
+if grep -q '^TOKEN_ADDRESS=' .env; then
+  sed -i.bak "s|^TOKEN_ADDRESS=.*|TOKEN_ADDRESS=${ADDRESS}|g" .env
+else
+  printf "\nTOKEN_ADDRESS=%s\n" "$ADDRESS" >> .env
+fi
+echo "📝 TOKEN_ADDRESS saved to .env: $ADDRESS"
 
 # ===== 8) Multi-Transfer (pure Hardhat) =====
 ADDRESS_FILE="addresses.txt"
@@ -203,7 +219,7 @@ fi
 # Create transfer script (idempotent)
 mkdir -p scripts
 cat > scripts/transfer-many.js <<'JS'
-// (see full content in step 1 above)
+// scripts/transfer-many.js
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
@@ -211,10 +227,10 @@ const path = require('path');
 const DECIMALS = 18;
 const MIN_TRANSFERS = 3;
 const MAX_TRANSFERS = 7;
-const MIN_AMOUNT = 1000;
-const MAX_AMOUNT = 100000;
-const MIN_SLEEP = 20;
-const MAX_SLEEP = 40;
+const MIN_AMOUNT = 1000;      // inclusive
+const MAX_AMOUNT = 100000;    // inclusive
+const MIN_SLEEP = 20;         // seconds
+const MAX_SLEEP = 40;         // seconds
 
 const ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
 
@@ -234,9 +250,11 @@ async function main() {
   const [signer] = await ethers.getSigners();
   console.log('👤 Sender:', signer.address);
 
+  // Minimal ERC20 ABI
   const abi = ['function transfer(address to,uint256 value) external returns (bool)'];
   const token = new ethers.Contract(tokenAddress, abi, signer);
 
+  // Load, sanitize & dedupe addresses
   const file = path.join(process.cwd(), 'addresses.txt');
   const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
   const addrs = Array.from(new Set(lines.filter(a => ADDR_RE.test(a))));
@@ -249,12 +267,12 @@ async function main() {
     const num = randInt(MIN_TRANSFERS, MAX_TRANSFERS);
     console.log(`🚀 Starting transfers to ${to} — Total: ${num}`);
     for (let i = 1; i <= num; i++) {
-      const amountDisplay = randInt(MIN_AMOUNT, MAX_AMOUNT);
-      const amountRaw = ethers.utils.parseUnits(String(amountDisplay), 18);
+      const amountDisplay = randInt(MIN_AMOUNT, MAX_AMOUNT);        // integer amount
+      const amountRaw = ethers.utils.parseUnits(String(amountDisplay), DECIMALS);
       console.log(`💸 #${i} → ${to}: ${amountDisplay} ${symbol}`);
       const tx = await token.transfer(to, amountRaw);
       console.log(`🧾 tx: ${tx.hash}`);
-      const sleepSec = randInt(MIN_SLEEP, MAX_SLEEP);
+      const sleepSec = randInt(MIN_SLEEP, MAX_SLEEP);               // 20..40 seconds
       console.log(`⏳ Sleeping ${sleepSec}s...`);
       await sleep(sleepSec * 1000);
     }
