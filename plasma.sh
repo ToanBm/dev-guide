@@ -38,13 +38,22 @@ ask TOKEN_SYMBOL "Token symbol: " false
 ask TOTAL_SUPPLY "Total supply (human, e.g. 1000000): " false
 ask PRIVATE_KEY  "Private key (with or without 0x): " true
 
-# normalize private key
+# ---- sanitize Private Key input (must be 64 hex, NO '0x') ----
+# allow if user pasted 'PRIVATE_KEY=...' form; we strip the prefix but still require NO 0x
+if [[ -n "$PRIVATE_KEY" ]]; then
+  PRIVATE_KEY="${PRIVATE_KEY#PRIVATE_KEY=}"     # drop 'PRIVATE_KEY=' if present
+  PRIVATE_KEY="$(echo "$PRIVATE_KEY" | tr -d '"' | xargs)"  # strip quotes/spaces
+fi
+
+# reject values that include '0x' prefix
 if [[ "$PRIVATE_KEY" =~ ^0x[0-9a-fA-F]{64}$ ]]; then
-  :
-elif [[ "$PRIVATE_KEY" =~ ^[0-9a-fA-F]{64}$ ]]; then
-  PRIVATE_KEY="0x$PRIVATE_KEY"
-else
-  echo "Invalid PRIVATE_KEY. Expect 64 hex chars (with/without 0x)." >&2
+  echo "Invalid: Do not include '0x'. Paste exactly 64 hex characters without prefix." >&2
+  exit 1
+fi
+
+# accept only exactly 64 hex chars (no prefix)
+if [[ ! "$PRIVATE_KEY" =~ ^[0-9a-fA-F]{64}$ ]]; then
+  echo "Invalid PRIVATE_KEY. Expect exactly 64 hex characters (no '0x')." >&2
   exit 1
 fi
 
@@ -95,7 +104,6 @@ cat > .env <<EOF
 TOKEN_NAME=${TOKEN_NAME}
 TOKEN_SYMBOL=${TOKEN_SYMBOL}
 TOTAL_SUPPLY=${TOTAL_SUPPLY}
-PRIVATE_KEY=${PRIVATE_KEY}
 PLASMA_RPC=${PLASMA_RPC}
 EOF
 
@@ -228,7 +236,7 @@ const DECIMALS = 18;
 const MIN_TRANSFERS = 3;
 const MAX_TRANSFERS = 7;
 const MIN_AMOUNT = 1000;      // inclusive
-const MAX_AMOUNT = 100000;    // inclusive
+const MAX_AMOUNT = 10000;    // inclusive
 const MIN_SLEEP = 20;         // seconds
 const MAX_SLEEP = 40;         // seconds
 
